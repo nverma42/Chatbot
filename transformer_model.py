@@ -1,6 +1,31 @@
 import torch
 import torch.nn as nn
 
+"""
+TODO:
+Implement model checkpointing
+
+Add methods to save and load model states
+
+
+Add support for different transformer architectures
+
+Implement factory method to create different transformer variants (e.g., BERT, GPT)
+
+
+Implement adaptive input representations for better handling of rare words
+Add support for mixed precision training
+
+Implement FP16 training for faster computation on compatible hardware
+
+
+Implement model pruning techniques for more efficient inference
+Add type hints for better code readability and maintainability
+Implement attention visualization methods for model interpretability
+Add support for gradient accumulation to handle larger batch sizes
+Implement model quantization for more efficient deployment
+"""
+
 
 class TransformerModel(nn.Module):
     """

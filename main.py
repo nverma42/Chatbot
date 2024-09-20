@@ -7,6 +7,42 @@ from text_dataset import TextDataSet
 from transformer_model import TransformerModel
 from train_utils import train, generate_text
 
+"""
+TODO:
+Implement configuration management
+
+Add support for YAML or JSON configuration files
+
+
+Add command-line argument for selecting GPU or CPU training
+Implement logging
+
+Add proper logging with different verbosity levels
+
+
+Add support for resuming training from a checkpoint
+Implement model evaluation on a test set
+
+Add function to load and evaluate on a separate test dataset
+
+
+Add support for experiment tracking
+
+Integrate with MLflow or Weights & Biases for experiment management
+
+
+Implement hyperparameter tuning
+
+Add support for grid search or random search of hyperparameters
+
+
+Add type hints for better code readability and maintainability
+Implement proper error handling and graceful exit
+Add support for model serving
+
+Implement a simple API endpoint for model inference
+"""
+
 # Define command line arguments
 FLAGS = flags.FLAGS
 flags.DEFINE_string('data_path', './test.csv', 'Path to the CSV dataset')

@@ -1,6 +1,32 @@
 import pandas as pd
 from torch.utils.data import Dataset
 
+"""
+TODO:
+Implement data validation to ensure input CSV has the correct format
+
+Check for 'context' and 'response' columns
+Validate data types in each column
+
+
+Add support for different file formats (e.g., JSON, TXT)
+Implement data augmentation techniques
+
+Add methods for text augmentation (e.g., synonyms replacement, back-translation)
+
+
+Add caching mechanism for faster data loading
+
+Implement option to save processed data to disk for quicker subsequent loads
+
+
+Implement multiprocessing for faster data preprocessing
+Add type hints for better code readability and maintainability
+Implement custom collate function for more efficient batching
+Add support for dynamic padding within batches to reduce computational overhead
+
+"""
+
 # The dataset must have context and response columns in CSV format.
 
 

@@ -2,6 +2,44 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+"""
+TODO:
+Implement validation loop
+
+Add function to evaluate model on validation set
+
+
+Add early stopping mechanism
+
+Implement callback to stop training when validation loss plateaus
+
+
+Implement learning rate scheduling
+
+Add support for different LR schedulers (e.g., cosine annealing, reduce on plateau)
+
+
+Add support for gradient clipping to prevent exploding gradients
+Implement logging and metrics tracking
+
+Add integration with TensorBoard for visualization of training progress
+
+
+Add support for distributed training
+
+Implement data parallelism for multi-GPU training
+
+
+Implement custom loss functions
+
+Add option to use different loss functions (e.g., focal loss, label smoothing)
+
+
+Add type hints for better code readability and maintainability
+Implement progressive learning techniques (e.g., curriculum learning)
+Add support for mixed precision training in the training loop
+"""
+
 
 def train(model, data_loader, epochs, v_size, lr):
     """
