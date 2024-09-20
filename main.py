@@ -7,6 +7,7 @@ from text_dataset import TextDataSet
 from transformer_model import TransformerModel
 from train_utils import train, generate_text
 
+# Define command line arguments
 FLAGS = flags.FLAGS
 flags.DEFINE_string('data_path', './test.csv', 'Path to the CSV dataset')
 flags.DEFINE_integer('max_length', 128, 'Maximum sequence length')
@@ -18,6 +19,12 @@ flags.DEFINE_integer('max_gen_length', 50, 'Maximum length of generated text')
 
 
 def main(argv):
+    """
+    Main function to initialize tokenizer, dataset, dataloader, and train the model.
+
+    Args:
+        argv (list): Command-line arguments.
+    """
     tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
     tokenizer.pad_token = tokenizer.eos_token
 
