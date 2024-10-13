@@ -104,6 +104,7 @@ python main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_pa
 
 - `--faq_data_path`: Path to the FAQ dataset CSV file (default is ./data/Mental_Health_FAQ.csv).
 - `--empathetic_data_path`: Path to the directory containing the empathetic dialogues datasets (default is ./data/empathetic-dialogues-contexts/).
+- `--canned_responses_path`: Path to the canned responses CSV file (default is `./data/canned_responses.csv`).
 - `--test_size`: Fraction of data to use for testing (default is 0.3).
 - `--random_state`: Seed for random number generation (default is 42).
 

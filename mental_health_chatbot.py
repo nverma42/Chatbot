@@ -35,6 +35,8 @@ flags.DEFINE_string('empathetic_data_path', 'hf://datasets/bdotloh/empathetic-di
                     'Path to the empathetic dialogues dataset')
 flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
 flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
+flags.DEFINE_string('canned_responses_path', './data/canned_responses.csv',
+                    'Path to the canned responses CSV file')
 
 
 class MentalHealthChatbot:
@@ -70,12 +72,28 @@ class MentalHealthChatbot:
         # Placeholder for additional classifiers
         self.knn_classifier = None
         self.emotion_classifier = None
-        self.canned_responses = {
-            'sadness': "I'm sorry to hear that you're feeling sad. Would you like to talk about it?",
-            'anger': "It seems like you're feeling angry. I'm here to listen if you'd like to share more.",
-            'joy': "That's wonderful to hear!",
-            # Add more emotions and corresponding responses
-        }
+        self.canned_responses = self.load_canned_responses(
+            self.canned_responses_path)
+
+    def load_canned_responses(self, path):
+        """
+        Loads canned responses from a CSV file into a dictionary.
+
+        Args:
+            path (str): Path to the canned responses CSV file.
+
+        Returns:
+            dict: A dictionary mapping emotions to responses.
+        """
+        try:
+            df = pd.read_csv(path)
+            # Ensure there are no NaN values
+            df = df.dropna(subset=['emotion', 'response'])
+            responses = dict(zip(df['emotion'], df['response']))
+            return responses
+        except Exception as e:
+            print(f"Error loading canned responses: {e}")
+            return {}
 
     def load_data(self):
         """
@@ -214,9 +232,6 @@ class MentalHealthChatbot:
         """
         Generates an emotional support response based on the user's query and predicted emotional state.
 
-        The query is classified into one of several emotional states using the trained emotion classifier, and 
-        a predefined (canned) response is returned based on the predicted emotion.
-
         Args:
             query (str): The user's emotional query.
 
@@ -225,8 +240,20 @@ class MentalHealthChatbot:
         """
         query_embedding = self.model.encode([query])
         predicted_emotion = self.emotion_classifier.predict(query_embedding)[0]
+        # Mapping similar emotions to a standard set
+        emotion_mapping = {
+            'sad': 'sadness',
+            'happy': 'joy',
+            'angry': 'anger',
+            # Add mappings as needed
+        }
+        standardized_emotion = emotion_mapping.get(
+            predicted_emotion, predicted_emotion)
+
         response = self.canned_responses.get(
-            predicted_emotion, "I'm here to listen.")
+            standardized_emotion,
+            "I'm here to listen. Please tell me more about how you're feeling."
+        )
         return response
 
     def respond_to_query(self, query):
@@ -285,6 +312,7 @@ def main(argv):
     chatbot = MentalHealthChatbot(
         faq_data_path=FLAGS.faq_data_path,
         empathetic_data_path=FLAGS.empathetic_data_path,
+        canned_responses_path=FLAGS.canned_responses_path,
         test_size=FLAGS.test_size,
         random_state=FLAGS.random_state
     )
