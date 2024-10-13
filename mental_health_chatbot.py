@@ -1,15 +1,15 @@
 """
-# Approach:
-# Use Sentence Transformer to encode each question
-# Build a logistic classifier to separate the question in two
-# categories:
-# A - User seeking information related to mental health
-# B - User seeking emotional support
-# For question category A, build a KNN classifier to generate a canned informational response.
-# For question category B, predict the emotion using LinearSVC classifier
-# For each emotion, generate a canned response.
-# Report precision, recall, F1 score for all the classifiers.
-# Important: Need canned response repository
+Approach:
+Use Sentence Transformer to encode each question
+Build a logistic classifier to separate the question in two
+categories:
+A - User seeking information related to mental health
+B - User seeking emotional support
+For question category A, build a KNN classifier to generate a canned informational response.
+For question category B, predict the emotion using LinearSVC classifier
+For each emotion, generate a canned response.
+Report precision, recall, F1 score for all the classifiers.
+Important: Need canned response repository
 
 While the current scope focuses on canned responses, 
     consider integrating advanced NLP models like GPT-3 
