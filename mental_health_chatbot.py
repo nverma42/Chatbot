@@ -16,6 +16,15 @@ While the current scope focuses on canned responses,
     for more dynamic responses in future iterations. 
 Also, think about the ethical implications and the necessity for the chatbot to 
     recognize when to direct users to professional help.
+
+Future Enhancements:
+Dynamic Response Generation: In the future, 
+    replace canned responses with dynamically generated 
+    responses using a language model like GPT-3 or fine-tuned transformers.
+Localization: If you plan to support multiple languages, 
+    you can expand your CSV to include a language column.
+Emotional Intensity: Include an additional column to handle 
+    the intensity of emotions for more nuanced responses.
 """
 # Read empathetic dialogues context
 import pandas as pd

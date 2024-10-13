@@ -5,6 +5,7 @@ mental_health_chatbot/
 ├── utils.py                 # Utility functions (if any)
 ├── data/
 │   ├── Mental_Health_FAQ.csv
+|   ├── canned_responses.csv    
 │   └── empathetic-dialogues-contexts/
 │       ├── train.csv
 │       ├── valid.csv

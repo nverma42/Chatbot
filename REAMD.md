@@ -97,7 +97,15 @@ pip install -r requirements.txt
 Once you have installed the necessary dependencies and activated your environment, you can run the chatbot using the following command:
 
 ```bash
-python main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_path ./data/empathetic-dialogues-contexts/
+python main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_path ./data/empathetic-dialogues-contexts --canned_responses_path ./data/canned_responses.csv
+```
+
+*alt view*:
+
+```powershell
+python main.py --faq_data_path ./data/Mental_Health_FAQ.csv \
+               --empathetic_data_path ./data/empathetic-dialogues-contexts/ \
+               --canned_responses_path ./data/canned_responses.csv
 ```
 
 ### Optional Arguments
