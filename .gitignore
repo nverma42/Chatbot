@@ -1,0 +1,123 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Virtual environment directories
+env/
+venv/
+.venv/
+env.bak/
+venv.bak/
+
+# Conda environment files
+*.conda
+*.env
+*.venv
+
+# Package files
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+wheels/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# PyInstaller
+# Usually these files are written by a python script from a template
+# before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Jupyter Notebook files
+.ipynb_checkpoints/
+
+# VSCode configuration files
+.vscode/
+
+# VS specific directories
+.vs/
+.idea/
+
+# Visual Studio Code Workspace
+*.code-workspace
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# VS Specific
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+
+# Visual Studio Code project settings
+.settings/
+
+# Logs
+*.log
+
+# Local env files
+.env
+.env.*
+
+# dotenv environment variables file
+.env.local
+.env.development
+.env.test
+.env.production
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# PyCharm
+.idea/
+
+# JupyterLab
+.lab/
+.jupyter/
+
+# Ignore data files
+data/
+
+# Ignore macOS specific files
+.DS_Store
+
+# Ignore pyright type checking files
+.pyright/
+
+# Other VS files
+*.csproj
+*.dbmdl
+*.VC.db
+*.pdb
+*.opendb
