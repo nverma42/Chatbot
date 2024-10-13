@@ -74,6 +74,7 @@ ehthumbs.db
 *.user
 *.userossc
 *.sln.docstates
+*.pyproj
 
 # Visual Studio Code project settings
 .settings/
