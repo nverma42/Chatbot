@@ -1,0 +1,14 @@
+mental_health_chatbot/
+│
+├── main.py                  # Entry point of the application
+├── chatbot.py               # Contains the MentalHealthChatbot class
+├── utils.py                 # Utility functions (if any)
+├── data/
+│   ├── Mental_Health_FAQ.csv
+|   ├── canned_responses.csv    
+│   └── empathetic-dialogues-contexts/
+│       ├── train.csv
+│       ├── valid.csv
+│       └── test.csv
+├── requirements.txt         # List of dependencies
+└── README.md                # Project documentation
