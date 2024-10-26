@@ -109,7 +109,7 @@ dmypy.json
 .jupyter/
 
 # Ignore data files
-data/
+# data/
 
 # Ignore macOS specific files
 .DS_Store
