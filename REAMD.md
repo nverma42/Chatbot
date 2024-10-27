@@ -10,6 +10,7 @@ This project focuses on building a mental health chatbot that can provide empath
   - [Using venv](#using-venv)
 - [Running the Chatbot](#running-the-chatbot)
 - [Project Structure](#project-structure)
+- [Schema Definition](#schema-definition)
 - [Usage](#usage)
 - [Credits](#credits)
 
@@ -97,32 +98,99 @@ pip install -r requirements.txt
 Once you have installed the necessary dependencies and activated your environment, you can run the chatbot using the following command:
 
 ```bash
-python main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_path ./data/empathetic-dialogues-contexts --canned_responses_path ./data/canned_responses.csv
+python conversation_chatbot_main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_path ./data/empathetic-dialogues-contexts --conversations_data_path ./data/mental_health_counseling_conversations.csv
 ```
 
 *alt view*:
 
 ```powershell
-python main.py --faq_data_path ./data/Mental_Health_FAQ.csv \
+python conversation_chatbot_main.py --faq_data_path ./data/Mental_Health_FAQ.csv \
                --empathetic_data_path ./data/empathetic-dialogues-contexts/ \
-               --canned_responses_path ./data/canned_responses.csv
+               --conversations_data_path ./data/mental_health_counseling_conversations.csv
 ```
 
 ### Optional Arguments
 
 - `--faq_data_path`: Path to the FAQ dataset CSV file (default is ./data/Mental_Health_FAQ.csv).
 - `--empathetic_data_path`: Path to the directory containing the empathetic dialogues datasets (default is ./data/empathetic-dialogues-contexts/).
-- `--canned_responses_path`: Path to the canned responses CSV file (default is `./data/canned_responses.csv`).
+- `--conversations_data_path`: Path to the CSV file containing mental health counseling conversations (default is ./data/mental_health_counseling_conversations.csv).
 - `--test_size`: Fraction of data to use for testing (default is 0.3).
 - `--random_state`: Seed for random number generation (default is 42).
 
-The chatbot will start running, and you can interact with it via the command line. Type your query and receive a response. Type `exit` or `quit` to stop the chatbot.
+The chatbot will start running, and you can interact with it via the command line. Type your query, and the chatbot will categorize it as either informational or emotional, providing a suitable response.
+To exit the chatbot, you can type any of the following:
+
+- `exit`
+- `quit`
+- `q`
+- `x`
+- `e`
+- `Or press Ctrl+C (keyboard interrupt)`
+
+## Project Structure
+
+The project follows a structured organization defined using GraphQL schema. Below is both the visual directory structure and its corresponding schema representation:
+
+```ps
+mental_health_chatbot/
+│
+├── main.py                  # Entry point of the application
+├── chatbot.py               # Contains the MentalHealthChatbot class
+├── utils.py                 # Utility functions
+├── data/
+│   ├── Mental_Health_FAQ.csv
+│   ├── canned_responses.csv    
+│   └── empathetic-dialogues-contexts/
+│       ├── train.csv
+│       ├── valid.csv
+│       └── test.csv
+├── requirements.txt         # List of dependencies
+└── README.md               # Project documentation
+```
+
+### Schema Definition
+
+The project structure is formally defined in `project-structure.graphql`:
+
+```graphql
+# Import from ./project-structure.graphql
+type Project {
+  name: String!
+  rootDirectory: Directory!
+}
+
+# See complete schema in project-structure.graphql
+```
+
+### Key Components
+
+- **Source Files**:
+  - `main.py`: Entry point for the chatbot application
+  - `chatbot.py`: Core chatbot implementation
+  - `utils.py`: Helper functions and utilities
+
+- **Data Directory**:
+  - Mental health FAQ dataset
+  - Canned responses
+  - Empathetic dialogues training data
+
+- **Configuration**:
+  - `requirements.txt`: Project dependencies
+  - `README.md`: Documentation and setup instructions
+
+### Key Files and Directories
+
+- `data/`: Contains the required datasets for running the chatbot, including FAQ data, counseling conversation data, and empathetic dialogues.
+- `mental_health_chatbot.py`: Implements the `MentalHealthChatbot` class, handling data loading, preprocessing, model training, and generating responses.
+- `conversation_chatbot_main.py`: Contains the runtime logic and manages the interactive loop for user queries.
+- `README.md`: Provides an overview of the project, installation steps, running instructions, and usage examples.
+- `requirements.txt`: Lists the dependencies needed to run the project (e.g., `sentence-transformers`, `scikit-learn`).
+
+Ensure the datasets are correctly placed in the `data/` directory as per the structure, and you're ready to run the chatbot using the provided instructions.
 
 ### Usage
 
-Once the chatbot is running, type any mental health-related query.
-The chatbot will categorize your query as either informational or emotional.
-It will respond with canned answers based on the classification.
+Once the chatbot is running, type any mental health-related query. The chatbot will categorize your query as either informational or emotional. It will then respond with an appropriate answer based on its classification, using the FAQ dataset for informational queries and a conversation graph derived from counseling sessions for emotional queries.
 
 **Example interaction**:
 
