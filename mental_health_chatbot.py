@@ -37,7 +37,36 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, precision_recall_fscore_support
 
 FLAGS = flags.FLAGS
+'''
+We do not neeed data/canned_response.csv.
+The canned response file is the mental health FAQ file.
 
+The empathetic data path represents the situation and emotion.
+Our emotion classifier needs to produce one of the 32 emotions 
+encoded in this dataset. This classifier will be used to classify the emotion
+of user's query i.e. angry, furious, sad etc.
+
+Instead of producing canned responses to each emotion, we can create
+a conversation graph based on previous counseling sessions.
+A conversation graph will enable us to have history and thus
+chatbot will be able to have meaninful conversations.
+We will use this data: https://huggingface.co/datasets/Amod/mental_health_counseling_conversations
+So we need to add df_C dataframe to get this data.
+
+Using conversation graph is better than producing canned responses.
+
+How will this process work?
+
+This data has conversations with a counselor.
+We will classify each of these conversations with an emotion because we have emotion classifier now.
+Thus each emotion will have a separate graph. Let us say when someone is 
+sad, how conversation with a counseler proceeds is very predictable.
+We will first classify user's emotion.
+The ChatBot will then map user's query to a graph.
+Then the conversation will proceed accordingly.
+We do not have a lot of conversation data, so chatbot won't 
+be able to chat for long but for our project this should be fine.
+'''
 flags.DEFINE_string(
     'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
 flags.DEFINE_string('empathetic_data_path', 'hf://datasets/bdotloh/empathetic-dialogues-contexts/',
@@ -222,7 +251,7 @@ class MentalHealthChatbot:
             None
         """
         emotions = self.df_B['emotion']
-        contexts = self.df_B['context']
+        contexts = self.df_B['situation']
         X_emotion = self.model.encode(contexts.tolist())
         y_emotion = emotions.tolist()
 
