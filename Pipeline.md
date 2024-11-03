@@ -49,7 +49,7 @@ A conversation graph will be created based on previous counseling sessions.
 A conversation graph will enable us to have history and thus
 chatbot will be able to have meaninful conversations.
 We will use this data: <https://huggingface.co/datasets/Amod/mental_health_counseling_conversations>
-So we need to add df_C dataframe to get this data.
+So we need to add df_B dataframe to get this data.
 
 Using conversation graph is better than producing canned responses.
 
@@ -62,6 +62,8 @@ sad because of relationship issues, how conversation with a counseler proceeds i
 We will first classify user's situation.
 The ChatBot will then map user's query to a graph.
 Then the conversation will proceed accordingly.
+Each response will sent to a summarization engine which will produce a compact response.
+For the purpose of demo, we will show both response.
 We do not have a lot of conversation data, so chatbot won't
 be able to chat for long but for our project this should be fine.
 ```
