@@ -1,8 +1,7 @@
 # Datasets used for Mental Health Chatbot.
 
 A. data/Mental_Health_FAQ.csv for informational response
-B. <https://huggingface.co/datasets/bdotloh/empathetic-dialogues-contexts> to build emotion classifier
-C. Build a conversation graph by selecting some conversations. There is a lot in this dataset and we may need to curate this data.
+B. Build a conversation graph by selecting some conversations. There is a lot in this dataset and we may need to curate this data.
 
 <https://huggingface.co/datasets/Amod/mental_health_counseling_conversations> for mapping conversations appropriate to an emotion.
 
@@ -20,40 +19,33 @@ User: I've gone to a couple therapy sessions so far and still everytime I walk i
 
 Counseler: Certainly. It is ok to feel nervous. I wish you good luck!
 
-This curated data is called: conversation_graph.csv which I will make.
+This curated data will be added to the mental health counseling conversations as an example of multi-stage conversation.
 
 So this conversation can be represented as a graph. If we do not have conversation data for specific situation of sadness, we will just use
 canned_responses.csv to select the response and that would be the end of the conversation.
 
 Pipeline of Mental Health Chatbot.
 
-1. Load all datasets with pandas - df_A, df_B, df_C
+1. Load all datasets with pandas - df_A, df_B
 
 2. Classify user's query into informational A or emotional B.
 
 3. If user's query is informational, produce a response directly from the answers in the FAQ file.
    We already built, k nearest neighbor classifier for this purpose.
 
-4. Build a LinearSVC classifier to pinpoint exact emotion a user is having - sad, furious etc.
-   The B dataset has 32 emotions. So we cover a lot of emotions a user has.
+4. Generate distinct situation categories using Latent Dirichlet Allocation (LDA) generative statistical model for dataset B.
 
-5. Build emotion graph based on dataset C. The graph is a network X graph which chat bot navigates.
-   For example, let us say chatbot detects user is having sadness as emotion.
-   I will pick out various conversations in this graph and curate them to present various kinds of situations for emotion of sadness.
-
-6. We will use similarity based node matching to produce a response.
+5. Build emotion graph based on dataset B. The graph is a network X graph which chat bot navigates.
+   For example, let us say chatbot detects user wants to discuss their addiction issues.
+   Then chatbot figures out the apppropriate topic and pick the best conversation for that topic.
+   
+7. We will use similarity based node matching to produce a response.
 
 ```py
 We do not neeed data/canned_response.csv.
 The canned response file is the mental health FAQ file.
 
-The empathetic data path represents the situation and emotion.
-Our emotion classifier needs to produce one of the 32 emotions
-encoded in this dataset. This classifier will be used to classify the emotion
-of user's query i.e. angry, furious, sad etc.
-
-Instead of producing canned responses to each emotion, we can create
-a conversation graph based on previous counseling sessions.
+A conversation graph will be created based on previous counseling sessions.
 A conversation graph will enable us to have history and thus
 chatbot will be able to have meaninful conversations.
 We will use this data: <https://huggingface.co/datasets/Amod/mental_health_counseling_conversations>
@@ -64,10 +56,10 @@ Using conversation graph is better than producing canned responses.
 How will this process work?
 
 This data has conversations with a counselor.
-We will classify each of these conversations with an emotion because we have emotion classifier now.
-Thus each emotion will have a separate graph. Let us say when someone is
-sad, how conversation with a counseler proceeds is very predictable.
-We will first classify user's emotion.
+We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
+Thus each situation will have a separate graph. Let us say when someone is
+sad because of relationship issues, how conversation with a counseler proceeds is very predictable.
+We will first classify user's situation.
 The ChatBot will then map user's query to a graph.
 Then the conversation will proceed accordingly.
 We do not have a lot of conversation data, so chatbot won't
