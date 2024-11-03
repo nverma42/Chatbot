@@ -6,17 +6,16 @@ import networkx as nx
 from sentence_transformers import SentenceTransformer
 from numpy.linalg import norm
 from nltk import word_tokenize
-from nltk.corpus.reader import documents
-from nltk.corpus import stopwords
-from nltk.stem import WordNetLemmatizer
 from gensim import corpora
 from gensim.models import LdaModel, TfidfModel
 
 
 class Emotional_Response(object):
 
-    # Lemmatize and filter stop words
     def get_filtered_base_words(self, query):
+        """
+        # Lemmatize and filter stop words
+        """
         tokens = word_tokenize(query.lower())
         base_words = [self.lemmatizer.lemmatize(
             token) for token in tokens if token.isalpha()]
@@ -24,75 +23,13 @@ class Emotional_Response(object):
             word for word in base_words if word not in self.custom_stop_words]
         return filtered_base_words
 
-    # Preprocess context data by lemmatizing and filtering out stop words.
-    # This way, we can focus only on the relevant parts of the text.
     def preprocess_data(self, contexts):
+        """
+        # Preprocess context data by lemmatizing and filtering out stop words.
+        # This way, we can focus only on the relevant parts of the text.
+        """
         nltk.download('stopwords')
         nltk.download('wordnet')
-
-        lemmatizer = WordNetLemmatizer()
-        stop_words = set(stopwords.words('english'))
-        custom_stop_words = stop_words.union(['wa',
-                                              'ha',
-                                              'doe',
-                                              'know',
-                                              'want',
-                                              'something',
-                                              'someone',
-                                              'person',
-                                              'process',
-                                              'start',
-                                              'nothing',
-                                              'make',
-                                              'really',
-                                              'get',
-                                              'like',
-                                              'know',
-                                              'many',
-                                              'say',
-                                              'walk',
-                                              'one',
-                                              'two',
-                                              'ca',
-                                              'would',
-                                              'said',
-                                              'still',
-                                              'got',
-                                              'go',
-                                              'back',
-                                              'lot',
-                                              'u',
-                                              'think',
-                                              'feel',
-                                              'need',
-                                              'help',
-                                              'issue',
-                                              'told',
-                                              'always',
-                                              'stop',
-                                              'even',
-                                              'see',
-                                              'ever',
-                                              'thought',
-                                              'thing',
-                                              'everything',
-                                              'year',
-                                              'going',
-                                              'around',
-                                              'time',
-                                              'keep',
-                                              'also',
-                                              'much',
-                                              'day',
-                                              'tell',
-                                              'anything',
-                                              'give',
-                                              'normal',
-                                              'never',
-                                              'every',
-                                              'stay',
-                                              'month',
-                                              ])
 
         # Preprocess questions
         processed_questions = []
@@ -102,10 +39,12 @@ class Emotional_Response(object):
 
         return processed_questions
 
-    # Apply Latent Dirichlet Allocation is a statistical generative model which uses
-    # co-occurrence of various words to identify a certain topic. LDA is widely used for
-    # topic modeling.
     def apply_lda_model(self, processed_data):
+        """
+        # Apply Latent Dirichlet Allocation is a statistical generative model which uses
+        # co-occurrence of various words to identify a certain topic. LDA is widely used for
+        # topic modeling.
+        """
         self.dictionary = corpora.dictionary(processed_data)
 
         # Represent each data point by bag of words
@@ -168,10 +107,12 @@ class Emotional_Response(object):
             self.graph_dict[topic] = {}
         self.graph_dict[topic][row['Conv_Id']] = conv_graph
 
-    # Extend conversation graph by finding the leaf node
-    # Conversations are linear by design presently.
-    # In future, probabilistic conversations can be added.
     def extend_conv_graph(conv_graph, row):
+        """
+        # Extend conversation graph by finding the leaf node
+        # Conversations are linear by design presently.
+        # In future, probabilistic conversations can be added.
+        """
         leaf_nodes = [
             node for node in conv_graph.nodes if conv_graph.out_degree(node) == 0]
 
