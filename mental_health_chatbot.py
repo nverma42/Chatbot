@@ -1,34 +1,51 @@
 """
 Approach:
-Use Sentence Transformer to encode each question
-Build a logistic classifier to separate the question in two
-categories:
-A - User seeking information related to mental health
-B - User seeking emotional support
-For question category A, build a KNN classifier to generate a canned informational response.
-For question category B, predict the emotion using LinearSVC classifier
-For each emotion, generate a canned response.
-Report precision, recall, F1 score for all the classifiers.
-Important: Need canned response repository
+This chatbot uses a Sentence Transformer model to encode each 
+    user query and classify it into two categories:
+A - User seeking information related to mental health (informational query)
+B - User seeking emotional support (emotional query)
 
-While the current scope focuses on canned responses, 
-    consider integrating advanced NLP models like GPT-3 
-    for more dynamic responses in future iterations. 
-Also, think about the ethical implications and the necessity for the chatbot to 
-    recognize when to direct users to professional help.
+For category A:
+- A K-Nearest Neighbors (KNN) classifier is built to match the query 
+    with an appropriate informational response from the FAQ dataset.
+
+For category B:
+- A Linear Support Vector Classifier (LinearSVC) is trained to 
+    predict the user's emotional state (e.g., sadness, anger, etc.).
+- Instead of canned responses, the chatbot uses a conversation graph 
+    derived from real counseling sessions to provide meaningful, multi-turn interactions.
+- These conversation graphs help sustain an ongoing conversation, 
+    providing a more personalized and empathetic experience.
+
+Report precision, recall, and F1 score for both classifiers 
+    (logistic classifier and emotion classifier).
+
+Important Changes:
+- The dependency on canned responses has been removed. 
+    Emotional responses are now generated based on a graph of 
+        real counseling sessions, enabling history-aware conversations.
+- The chatbot maintains conversation state, 
+    allowing it to handle multi-turn conversations with users.
 
 Future Enhancements:
-Dynamic Response Generation: In the future, 
-    replace canned responses with dynamically generated 
-    responses using a language model like GPT-3 or fine-tuned transformers.
-Localization: If you plan to support multiple languages, 
-    you can expand your CSV to include a language column.
-Emotional Intensity: Include an additional column to handle 
-    the intensity of emotions for more nuanced responses.
+1. Dynamic Response Generation:
+    - Consider integrating advanced NLP models like 
+        GPT-3 or fine-tuned transformers to generate dynamic responses, 
+        further improving the chatbot's conversational capabilities.
+2. Localization:
+    - Support multiple languages by adding a language column to the FAQ 
+        and counseling conversation datasets, 
+        making the chatbot accessible to a wider audience.
+3. Emotional Intensity:
+    - Include an additional column to handle the intensity of emotions for 
+        more nuanced responses, improving the chatbot's ability to 
+        tailor support to users' emotional states.
+4. Professional Help:
+    - Enhance the chatbot's ethical considerations by ensuring it can recognize 
+    high-risk situations and direct users to professional help when necessary.
 """
-# Read empathetic dialogues context
 import pandas as pd
-from absl import app, flags
+import random
 from sentence_transformers import SentenceTransformer
 from sklearn.svm import LinearSVC
 from sklearn.neighbors import NearestNeighbors
@@ -36,73 +53,44 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, precision_recall_fscore_support
 
-FLAGS = flags.FLAGS
-'''
-We do not neeed data/canned_response.csv.
-The canned response file is the mental health FAQ file.
-
-The empathetic data path represents the situation and emotion.
-Our emotion classifier needs to produce one of the 32 emotions 
-encoded in this dataset. This classifier will be used to classify the emotion
-of user's query i.e. angry, furious, sad etc.
-
-Instead of producing canned responses to each emotion, we can create
-a conversation graph based on previous counseling sessions.
-A conversation graph will enable us to have history and thus
-chatbot will be able to have meaninful conversations.
-We will use this data: https://huggingface.co/datasets/Amod/mental_health_counseling_conversations
-So we need to add df_C dataframe to get this data.
-
-Using conversation graph is better than producing canned responses.
-
-How will this process work?
-
-This data has conversations with a counselor.
-We will classify each of these conversations with an emotion because we have emotion classifier now.
-Thus each emotion will have a separate graph. Let us say when someone is 
-sad, how conversation with a counseler proceeds is very predictable.
-We will first classify user's emotion.
-The ChatBot will then map user's query to a graph.
-Then the conversation will proceed accordingly.
-We do not have a lot of conversation data, so chatbot won't 
-be able to chat for long but for our project this should be fine.
-'''
-flags.DEFINE_string(
-    'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
-flags.DEFINE_string('empathetic_data_path', 'hf://datasets/bdotloh/empathetic-dialogues-contexts/',
-                    'Path to the empathetic dialogues dataset')
-flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
-flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
-flags.DEFINE_string('canned_responses_path', './data/canned_responses.csv',
-                    'Path to the canned responses CSV file')
-
 
 class MentalHealthChatbot:
     """A chatbot for mental health support."""
 
-    def __init__(self, faq_data_path, empathetic_data_path, test_size, random_state):
+    def __init__(self, faq_data_path, empathetic_data_path, conversations_data_path, test_size, random_state):
         """
         Initializes the MentalHealthChatbot with data paths and configuration parameters.
 
         Args:
             faq_data_path (str): Path to the FAQ dataset (CSV file).
             empathetic_data_path (str): Path to the empathetic dialogues dataset (directory).
+            conversations_data_path (str): Path to the 
+                mental health counseling conversations dataset (CSV file).
             test_size (float): Fraction of the data to reserve for testing (0 < test_size < 1).
             random_state (int): Seed for random number generation to ensure reproducibility.
 
         Attributes:
             model (SentenceTransformer): Pretrained Sentence-BERT model for encoding sentences.
-            logistic_classifier (LogisticRegression): Classifier for determining the type of query (informational vs. emotional).
-            knn_classifier (NearestNeighbors): KNN classifier for retrieving informational responses (set later).
-            emotion_classifier (LinearSVC): Classifier for predicting emotions in emotional queries (set later).
+            logistic_classifier (LogisticRegression): Classifier for 
+                determining the type of query (informational vs. emotional).
+            knn_classifier (NearestNeighbors): KNN classifier for 
+                retrieving informational responses (set later).
+            emotion_classifier (LinearSVC): Classifier for 
+                predicting emotions in emotional queries (set later).
             df_A (DataFrame): DataFrame containing FAQ questions and answers.
             df_B (DataFrame): DataFrame containing empathetic dialogues context and emotion.
+            df_C (DataFrame): DataFrame containing mental health counseling conversations.
             X (np.array): Encoded representations of both FAQ and empathetic dialogue data.
             y (list): Labels corresponding to the FAQ and empathetic dialogue data.
-            canned_responses (dict): Predefined emotional responses keyed by predicted emotion.
+            conversations_per_emotion (dict): Conversation graphs organized by emotion.
+            current_conversation (list): Current conversation sequence.
+            current_conversation_index (int): Index of the next 
+                response in the current conversation.
+            current_emotion (str): Emotion associated with the current conversation.
         """
         self.faq_data_path = faq_data_path
         self.empathetic_data_path = empathetic_data_path
+        self.conversations_data_path = conversations_data_path
         self.test_size = test_size
         self.random_state = random_state
         self.model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -110,79 +98,83 @@ class MentalHealthChatbot:
         # Placeholder for additional classifiers
         self.knn_classifier = None
         self.emotion_classifier = None
-        self.canned_responses = self.load_canned_responses(
-            self.canned_responses_path)
-
-    def load_canned_responses(self, path):
-        """
-        Loads canned responses from a CSV file into a dictionary.
-
-        Args:
-            path (str): Path to the canned responses CSV file.
-
-        Returns:
-            dict: A dictionary mapping emotions to responses.
-        """
-        try:
-            df = pd.read_csv(path)
-            # Ensure there are no NaN values
-            df = df.dropna(subset=['emotion', 'response'])
-            responses = dict(zip(df['emotion'], df['response']))
-            return responses
-        except Exception as e:
-            print(f"Error loading canned responses: {e}")
-            return {}
+        self.current_conversation = None
+        self.current_conversation_index = 0
+        self.current_emotion = None
 
     def load_data(self):
         """
-        Loads the FAQ and empathetic dialogues datasets into DataFrames.
-
-        FAQ data is expected to be in CSV format containing columns for questions and answers.
-        Empathetic dialogues data should contain columns for context and associated emotions.
+        Loads the FAQ, empathetic dialogues, and 
+            mental health counseling conversations datasets into DataFrames.
 
         Returns:
             None
         """
-        self.df_A = pd.read_csv(self.faq_data_path)
-        print("FAQ Data Columns:", self.df_A.columns)
+        self.df_faq = pd.read_csv(
+            self.faq_data_path)  # Updated from df_A to df_faq
+        print("FAQ Data Columns:", self.df_faq.columns)
 
         splits = {'train': 'train.csv',
                   'validation': 'valid.csv', 'test': 'test.csv'}
-        self.df_B = pd.read_csv(self.empathetic_data_path + splits['train'])
-        print("Empathetic Dialogues Columns:", self.df_B.columns)
+        # Updated from df_B to df_empathetic_dialogues
+        self.df_empathetic_dialogues = pd.read_csv(
+            self.empathetic_data_path + splits['train'])
+        print("Empathetic Dialogues Columns:",
+              self.df_empathetic_dialogues.columns)
+
+        # Updated from df_C to df_counseling_conversations
+        self.df_counseling_conversations = pd.read_csv(
+            self.conversations_data_path)
+        print("Mental Health Counseling Conversations Columns:",
+              self.df_counseling_conversations.columns)
 
     def preprocess_data(self):
         """
-        Preprocesses and encodes the FAQ questions and empathetic dialogue contexts using Sentence-BERT.
+        Preprocesses and encodes the FAQ questions and 
+            empathetic dialogue contexts using Sentence-BERT.
 
-        The method concatenates FAQ questions and empathetic dialogue contexts into a single dataset, 
-        then encodes the data into vector representations using the pretrained Sentence-BERT model.
-
-        It also generates binary labels: 0 for informational queries and 1 for emotional queries.
+        Also processes the mental health counseling conversations 
+            to organize them per emotion.
 
         Returns:
             None
         """
-        class_A_questions = self.df_A['Questions']
-        class_A_labels = [0] * len(class_A_questions)
+        # Preprocess FAQ and empathetic dialogue data
+        # Updated from class_A_questions to faq_questions
+        faq_questions = self.df_faq['Questions']
+        # Updated from class_A_labels to faq_labels
+        faq_labels = [0] * len(faq_questions)
 
-        class_B_contexts = self.df_B['situation']
-        class_B_labels = [1] * len(class_B_contexts)
+        # Updated from class_B_contexts to empathetic_contexts
+        empathetic_contexts = self.df_empathetic_dialogues['context']
+        # Updated from class_B_labels to empathetic_labels
+        empathetic_labels = [1] * len(empathetic_contexts)
 
-        all_data = pd.concat(
-            [class_A_questions, class_B_contexts], ignore_index=True).to_numpy()
+        all_data = pd.concat([faq_questions, empathetic_contexts],
+                             ignore_index=True).to_numpy()
         self.X = self.model.encode(all_data)
-        self.y = class_A_labels + class_B_labels
+        self.y = faq_labels + empathetic_labels
+
+        # Process mental health counseling conversations
+        self.conversations_per_emotion = {}
+
+        for _, row in self.df_counseling_conversations.iterrows():
+            emotion = row['emotion']
+            # Assuming 'conversation' column exists
+            conversation = row['conversation']
+            conversation_turns = conversation.split('__eot__')
+            conversation_turns = [turn.strip()
+                                  for turn in conversation_turns if turn.strip()]
+
+            if emotion not in self.conversations_per_emotion:
+                self.conversations_per_emotion[emotion] = []
+
+            self.conversations_per_emotion[emotion].append(conversation_turns)
 
     def train_logistic_classifier(self):
         """
-        Trains a logistic regression classifier to categorize user queries as either informational or emotional.
-
-        The classifier is trained on the encoded representations of FAQ and empathetic dialogues data, 
-        with binary labels indicating the type of query.
-
-        After training, the method evaluates the classifier using the test dataset and prints precision, recall, 
-        and F1 score for the model's performance.
+        Trains a logistic regression classifier to categorize user 
+            queries as either informational or emotional.
 
         Returns:
             None
@@ -201,17 +193,65 @@ class MentalHealthChatbot:
         print(
             f"Precision: {precision:.2f}, Recall: {recall:.2f}, F1 Score: {f1:.2f}")
 
-    def build_knn_classifier(self):
+    def train_emotion_classifier(self):
         """
-        Builds a K-Nearest Neighbors (KNN) classifier for retrieving informational responses.
+        Trains a Linear Support Vector Classifier (LinearSVC) to 
+            predict emotions from emotional support queries.
 
-        The FAQ questions are encoded and stored in the KNN classifier. When a new query categorized as 
-        informational is received, the KNN classifier finds the closest matching FAQ question to return a response.
+        The classifier is trained on the encoded contexts from the 
+            empathetic dialogues dataset and their 
+        associated emotions, as well as the conversations from the 
+            mental health counseling conversations dataset.
 
         Returns:
             None
         """
-        faq_embeddings = self.model.encode(self.df_A['Questions'].tolist())
+        # Extract emotions and contexts from the empathetic dialogues
+        # Updated from df_B to df_empathetic_dialogues
+        emotions_empathetic = self.df_empathetic_dialogues['emotion']
+        # Updated from df_B to df_empathetic_dialogues
+        contexts_empathetic = self.df_empathetic_dialogues['context']
+
+        # Extract emotions and the initial client utterance from the counseling conversations
+        # Updated from df_C to df_counseling_conversations
+        emotions_counseling = self.df_counseling_conversations['emotion']
+        contexts_counseling = self.df_counseling_conversations['conversation'].apply(
+            lambda x: x.split('__eot__')[0])  # Assuming the first turn is the client's message
+
+        # Combine the data from both sources
+        emotions = pd.concat(
+            [emotions_empathetic, emotions_counseling], ignore_index=True)
+        contexts = pd.concat(
+            [contexts_empathetic, contexts_counseling], ignore_index=True)
+
+        # Encode contexts
+        X_emotion = self.model.encode(contexts.tolist())
+        y_emotion = emotions.tolist()
+
+        # Split the data for training and testing
+        X_train, X_test, y_train, y_test = train_test_split(
+            X_emotion, y_emotion, test_size=self.test_size, random_state=self.random_state
+        )
+
+        # Train the emotion classifier
+        self.emotion_classifier = LinearSVC()
+        self.emotion_classifier.fit(X_train, y_train)
+        y_pred = self.emotion_classifier.predict(X_test)
+
+        # Print the classification report
+        print('\nEmotion Classification Report:\n',
+              classification_report(y_test, y_pred))
+
+    def build_knn_classifier(self):
+        """
+        Builds a K-Nearest Neighbors (KNN) 
+            classifier for retrieving informational responses.
+
+        Returns:
+            None
+        """
+        faq_embeddings = self.model.encode(
+            self.df_faq['Questions'].tolist())  # Updated from df_A to df_faq
         self.knn_classifier = NearestNeighbors(
             n_neighbors=1, algorithm='ball_tree').fit(faq_embeddings)
 
@@ -224,90 +264,72 @@ class MentalHealthChatbot:
 
         Returns:
             str: The informational response based on the closest match in the FAQ data.
-
-        Note:
-            The `distances` variable, although not returned, 
-            contains the distances between the query and the closest matching FAQ. 
-            It can be used to evaluate how closely the query matches the informational responses. 
-            May be useful for debugging or future enhancements.
         """
         query_embedding = self.model.encode([query])
-        distances, indices = self.knn_classifier.kneighbors(query_embedding)
+        _, indices = self.knn_classifier.kneighbors(query_embedding)
         index = indices[0][0]
-        response = self.df_A['Answers'].iloc[index]
+        # Updated from df_A to df_faq
+        response = self.df_faq['Answers'].iloc[index]
         return response
-
-    def train_emotion_classifier(self):
-        """
-        Trains a Linear Support Vector Classifier (LinearSVC) to predict emotions from emotional support queries.
-
-        The classifier is trained on the encoded contexts from the empathetic dialogues dataset and their 
-        associated emotions. It is used to determine the emotional state of users seeking emotional support.
-
-        After training, the method evaluates the classifier on the test data and prints a classification report 
-        (precision, recall, F1 score).
-
-        Returns:
-            None
-        """
-        emotions = self.df_B['emotion']
-        contexts = self.df_B['situation']
-        X_emotion = self.model.encode(contexts.tolist())
-        y_emotion = emotions.tolist()
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_emotion, y_emotion, test_size=self.test_size, random_state=self.random_state
-        )
-
-        self.emotion_classifier = LinearSVC()
-        self.emotion_classifier.fit(X_train, y_train)
-        y_pred = self.emotion_classifier.predict(X_test)
-
-        print('\nEmotion Classification Report:\n',
-              classification_report(y_test, y_pred))
 
     def get_emotional_response(self, query):
         """
-        Generates an emotional support response based on the user's query and predicted emotional state.
+        Generates an emotional support response based on the user's query and conversation state.
 
         Args:
             query (str): The user's emotional query.
 
         Returns:
-            str: A canned response tailored to the predicted emotional state of the user.
+            str: A response from the conversation graph based on the user's emotional state.
         """
-        query_embedding = self.model.encode([query])
-        predicted_emotion = self.emotion_classifier.predict(query_embedding)[0]
-        # Mapping similar emotions to a standard set
-        emotion_mapping = {
-            'sad': 'sadness',
-            'happy': 'joy',
-            'angry': 'anger',
-            # Add mappings as needed
-        }
-        standardized_emotion = emotion_mapping.get(
-            predicted_emotion, predicted_emotion)
+        # If no current conversation, classify emotion and start new conversation
+        if self.current_conversation is None:
+            query_embedding = self.model.encode([query])
+            predicted_emotion = self.emotion_classifier.predict(query_embedding)[
+                0]
 
-        response = self.canned_responses.get(
-            standardized_emotion,
-            "I'm here to listen. Please tell me more about how you're feeling."
-        )
+            # Select a conversation sequence for the predicted emotion
+            if predicted_emotion in self.conversations_per_emotion:
+                conversations = self.conversations_per_emotion[predicted_emotion]
+                # Randomly select a conversation
+                self.current_conversation = random.choice(conversations)
+                self.current_conversation_index = 0
+                self.current_emotion = predicted_emotion
+            else:
+                # If no conversation available for the emotion
+                return "I'm here to listen. Please tell me more about how you're feeling."
+
+        # Proceed to next turn in the conversation
+        if self.current_conversation_index < len(self.current_conversation):
+            response = self.current_conversation[self.current_conversation_index]
+            self.current_conversation_index += 1
+        else:
+            # End of conversation
+            response = "I hope our conversation has been helpful."
+            self.current_conversation = None
+            self.current_conversation_index = 0
+            self.current_emotion = None
+
         return response
 
     def respond_to_query(self, query):
         """
-        Responds to a user query by first categorizing it and then generating an appropriate response.
-
-        The method uses the logistic regression classifier to determine whether the query is informational or 
-        emotional. It then routes the query to the appropriate method for generating a response: 
-        `get_informational_response` or `get_emotional_response`.
+        Responds to a user query by first categorizing it and 
+            then generating an appropriate response.
 
         Args:
             query (str): The user's input query.
 
         Returns:
-            str: The chatbot's response (informational or emotional) based on the query type.
+            str: The chatbot's response (informational or emotional) 
+                based on the query type.
         """
+        # If in the middle of an emotional conversation, continue it
+        if self.current_conversation is not None:
+            response = self.get_emotional_response(query)
+            return response
+
+        # Else, classify the query
         query_embedding = self.model.encode([query])
         category = self.logistic_classifier.predict(query_embedding)[0]
 
@@ -317,45 +339,3 @@ class MentalHealthChatbot:
             response = self.get_emotional_response(query)
 
         return response
-
-    def run(self):
-        """
-        Executes the main flow of the chatbot, including data loading, training, and user interaction.
-
-        After loading and preprocessing the data, the method trains the classifiers and initiates an interactive 
-        loop where users can input queries. The chatbot will continue to respond to user queries until the user 
-        types 'exit' or 'quit'.
-
-        Returns:
-            None
-        """
-        self.load_data()
-        self.preprocess_data()
-        self.train_logistic_classifier()
-        self.build_knn_classifier()
-        self.train_emotion_classifier()
-
-        # Interactive loop
-        print("Welcome to the Mental Health Chatbot. Type 'exit' to quit.")
-        while True:
-            user_input = input("You: ")
-            if user_input.lower() in ['exit', 'quit']:
-                print("Chatbot: Take care!")
-                break
-            response = self.respond_to_query(user_input)
-            print(f"Chatbot: {response}")
-
-
-def main(argv):
-    chatbot = MentalHealthChatbot(
-        faq_data_path=FLAGS.faq_data_path,
-        empathetic_data_path=FLAGS.empathetic_data_path,
-        canned_responses_path=FLAGS.canned_responses_path,
-        test_size=FLAGS.test_size,
-        random_state=FLAGS.random_state
-    )
-    chatbot.run()
-
-
-if __name__ == '__main__':
-    app.run(main)
