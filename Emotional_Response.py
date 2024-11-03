@@ -1,26 +1,27 @@
+import random
+import numpy as np
 import nltk
-from nltk.corpus.reader import documents
 import pandas as pd
-import gensim
-from gensim import corpora
-from nltk.corpus import stopwords
-from nltk import word_tokenize
-from nltk.stem import WordNetLemmatizer
-from gensim.models import LdaModel, TfidfModel
-import sentence_transformers
-from numpy.linalg import norm
 import networkx as nx
 from sentence_transformers import SentenceTransformer
-import numpy as np
-import random
+from numpy.linalg import norm
+from nltk import word_tokenize
+from nltk.corpus.reader import documents
+from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
+from gensim import corpora
+from gensim.models import LdaModel, TfidfModel
+
 
 class Emotional_Response(object):
 
     # Lemmatize and filter stop words
     def get_filtered_base_words(self, query):
         tokens = word_tokenize(query.lower())
-        base_words = [self.lemmatizer.lemmatize(token) for token in tokens if token.isalpha()]
-        filtered_base_words = [word for word in base_words if word not in self.custom_stop_words]
+        base_words = [self.lemmatizer.lemmatize(
+            token) for token in tokens if token.isalpha()]
+        filtered_base_words = [
+            word for word in base_words if word not in self.custom_stop_words]
         return filtered_base_words
 
     # Preprocess context data by lemmatizing and filtering out stop words.
@@ -91,14 +92,14 @@ class Emotional_Response(object):
                                               'every',
                                               'stay',
                                               'month',
-                                             ])
+                                              ])
 
         # Preprocess questions
         processed_questions = []
         for context in contexts:
             filtered_base_words = self.get_filtered_base_words(context)
             processed_questions.append(filtered_base_words)
-        
+
         return processed_questions
 
     # Apply Latent Dirichlet Allocation is a statistical generative model which uses
@@ -108,7 +109,8 @@ class Emotional_Response(object):
         self.dictionary = corpora.dictionary(processed_data)
 
         # Represent each data point by bag of words
-        self.corpus_bow = [self.dictionary.doc2bow(doc) for doc in processed_data]
+        self.corpus_bow = [self.dictionary.doc2bow(
+            doc) for doc in processed_data]
 
         # Initialize tf-idf model
         self.tfidf_model = TfidfModel(self.corpus_bow)
@@ -123,7 +125,7 @@ class Emotional_Response(object):
                                   eta=0.01,
                                   passes=20,
                                   random_state=42)
-        
+
         self.topics = self.lda_model.print_topics(num_words=25)
 
         for idx, topic in self.topics:
@@ -140,7 +142,7 @@ class Emotional_Response(object):
         doc_bow = self.dictionary.doc2bow(filtered_base_words)
         doc_tfidf = self.tfidf[doc_bow]
         topics = self.lda_model.get_document_topics(doc_tfidf)
-        topic = max(topics, key=lambda x:x[1])[0]
+        topic = max(topics, key=lambda x: x[1])[0]
         return topic
 
     def tag_documents(self):
@@ -150,7 +152,7 @@ class Emotional_Response(object):
         for idx, row in self.df.iterrows():
             topic = self.get_topic(row['Context'])
             self.df.at[idx, 'Topic'] = topic
-    
+
             # Each conversation in the present data is independent
             self.df.at[idx, 'Conv_Id'] = idx
 
@@ -170,14 +172,17 @@ class Emotional_Response(object):
     # Conversations are linear by design presently.
     # In future, probabilistic conversations can be added.
     def extend_conv_graph(conv_graph, row):
-        leaf_nodes = [node for node in conv_graph.nodes if conv_graph.out_degree(node) == 0]
-    
+        leaf_nodes = [
+            node for node in conv_graph.nodes if conv_graph.out_degree(node) == 0]
+
         # Choose the first leaf node for insertion.
         new_from_node = row['Context']
         new_to_node = row['Response']
         conv_graph.add_edge(leaf_nodes[0], new_from_node)
-        conv_graph.add_node(new_from_node, conv_id=row['Conv_Id'], type='Context')
-        conv_graph.add_node(new_to_node, conv_id=row['Conv_Id'], type='Response')
+        conv_graph.add_node(
+            new_from_node, conv_id=row['Conv_Id'], type='Context')
+        conv_graph.add_node(
+            new_to_node, conv_id=row['Conv_Id'], type='Response')
         conv_graph.add_edge(new_from_node, new_to_node)
 
     def make_conversation_grah(self):
@@ -198,7 +203,7 @@ class Emotional_Response(object):
                         conv_graph.add_edge(row['Context'], row['Response'])
                         found = True
                         break
-            
+
                 if (found == False):
                     self.add_new_conv_graph(row)
                 else:
@@ -206,15 +211,16 @@ class Emotional_Response(object):
 
     def __init__(self):
         self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        self.df = pd.read_json("hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json", lines=True)
+        self.df = pd.read_json(
+            "hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json", lines=True)
         contexts = self.df['Context'].tolist()
         processed_data = self.preprocess_data(contexts)
         self.apply_lda_model(processed_data)
         self.tag_documents()
         self.make_conversation_grah()
 
-
     # Work-horse: Get the emotional query response by navigating the graph.
+
     def get_response(self, query):
         topic = self.get_topic(query)
 
@@ -232,12 +238,12 @@ class Emotional_Response(object):
                     break
             if (root):
                 root_embedding = self.encoder.encode(root)
-                score = np.dot(query_embedding, root_embedding) / (norm(query_embedding) * norm(root_embedding))
+                score = np.dot(query_embedding, root_embedding) / \
+                    (norm(query_embedding) * norm(root_embedding))
                 if (score > sim_score):
                     target_G = conv_graph
                     target_node = root
                     sim_score = score
-
 
         # Get the neighbors of the target node
         neighbors = list(target_G.neighbors(target_node))
@@ -248,7 +254,3 @@ class Emotional_Response(object):
         else:
             default_response = "Sorry, I do not have enough material on this topic to help you."
             return default_response
-
-
-
-
