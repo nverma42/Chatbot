@@ -51,7 +51,7 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, precision_recall_fscore_support
-from Emotional_Response import EmotionalResponse
+from emotional_response import EmotionalResponse
 
 
 class MentalHealthChatbot:
@@ -116,9 +116,6 @@ class MentalHealthChatbot:
         all_labels = faq_labels + conv_labels
 
         # Load the encoder model onto the specified device default is sentence_encoder = paraphrase-MiniLM-L6-v2
-        # self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        # self.encoder = SentenceTransformer('paraphrase-mpnet-base-v2')
-        # self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.encoder.to(self.device)
 
         # Use DataParallel if multiple GPUs are available
