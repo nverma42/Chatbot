@@ -50,6 +50,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
 flags.DEFINE_string(
+    'sentence_encoder', 'paraphrase-MiniLM-L6-v2', 'string of the Sentence Transform')
+flags.DEFINE_string(
     'conversations_data_path',
     'hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json',
     'Path to the mental health counseling conversations dataset')
@@ -154,16 +156,19 @@ def main(argv):
             conversations_data_path=FLAGS.conversations_data_path,
             test_size=FLAGS.test_size,
             random_state=FLAGS.random_state,
+            sentence_encoder=FLAGS.sentence_encoder,
             device=torch.device(device)
         )
     except torch.OutOfMemoryError:
-        logger.error("\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
+        logger.error(
+            "\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
         device = torch.device('cpu')
         chatbot = MentalHealthChatbot(
             faq_data_path=FLAGS.faq_data_path,
             conversations_data_path=FLAGS.conversations_data_path,
             test_size=FLAGS.test_size,
             random_state=FLAGS.random_state,
+            sentence_encoder=FLAGS.sentence_encoder,
             device=device
         )
 
@@ -186,7 +191,8 @@ def main(argv):
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
     except KeyboardInterrupt:
-        print("\n\nChatbot: Exiting. \nTake care!\n\n")  # Graceful exit on Ctrl+C
+        # Graceful exit on Ctrl+C
+        print("\n\nChatbot: Exiting. \nTake care!\n\n")
 
 
 if __name__ == '__main__':
