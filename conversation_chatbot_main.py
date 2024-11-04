@@ -41,6 +41,8 @@ from absl import app, flags
 from mental_health_chatbot import MentalHealthChatbot
 import torch
 import logging
+import subprocess
+import re
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -55,6 +57,49 @@ flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+def get_gpu_memory_info():
+    """
+    Uses nvidia-smi to get accurate memory usage for each GPU.
+
+    Returns:
+        List[Tuple[int, float]]: List of tuples containing (GPU ID, free memory in GB).
+    """
+    try:
+        result = subprocess.check_output(
+            ['nvidia-smi', '--query-gpu=memory.free', '--format=csv,noheader,nounits'])
+        memory_info = result.decode('utf-8').strip().split('\n')
+        gpu_info = [(i, float(mem)) for i, mem in enumerate(memory_info)]
+        return gpu_info
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to run nvidia-smi: " + str(e))
+        return []
+
+
+def get_best_available_device(min_memory_required=4.0):
+    """
+    Checks available GPUs using nvidia-smi and selects the best GPU based on free memory.
+    Falls back to CPU if no GPU has enough available memory.
+
+    Args:
+        min_memory_required (float): Minimum required free memory in GB.
+
+    Returns:
+        str: The best device string ('cuda:X' or 'cpu').
+    """
+    gpu_info = get_gpu_memory_info()
+    if gpu_info:
+        available_gpus = [(gpu_id, mem)
+                          for gpu_id, mem in gpu_info if mem >= min_memory_required]
+        if available_gpus:
+            # Sort by the most free memory available
+            selected_gpu = max(available_gpus, key=lambda x: x[1])[0]
+            logger.info(
+                f"Selected GPU: cuda:{selected_gpu} with {dict(gpu_info)[selected_gpu]:.2f} GB free")
+            return f'cuda:{selected_gpu}'
+    logger.warning("No suitable GPUs available. Falling back to CPU.")
+    return 'cpu'
 
 
 def get_available_devices(min_memory_required=4 * 1024**3):
@@ -98,25 +143,27 @@ def main(argv):
 
     The chatbot processes user input and categorizes it into informational or emotional types.
     """
-    # Get available devices with at least 4GB free memory
-    available_devices = get_available_devices(min_memory_required=4 * 1024**3)
+    device = get_best_available_device(min_memory_required=4.0)
 
-    if available_devices:
-        # Use DataParallel if more than one GPU is available
-        device = torch.device(f'cuda:{available_devices[0]}')
-        logger.info(f"Using GPU(s): {available_devices}")
-    else:
+    # Ensure that model loads properly on the selected device
+    try:
+        chatbot = MentalHealthChatbot(
+            faq_data_path=FLAGS.faq_data_path,
+            conversations_data_path=FLAGS.conversations_data_path,
+            test_size=FLAGS.test_size,
+            random_state=FLAGS.random_state,
+            device=torch.device(device)
+        )
+    except torch.OutOfMemoryError:
+        logger.error("Out of memory on all selected devices. Retrying on CPU.")
         device = torch.device('cpu')
-        logger.warning("No suitable GPUs available. Falling back to CPU.")
-
-    chatbot = MentalHealthChatbot(
-        faq_data_path=FLAGS.faq_data_path,
-        conversations_data_path=FLAGS.conversations_data_path,
-        test_size=FLAGS.test_size,
-        random_state=FLAGS.random_state,
-        device=device,
-        gpu_ids=available_devices  # Pass the list of available GPUs
-    )
+        chatbot = MentalHealthChatbot(
+            faq_data_path=FLAGS.faq_data_path,
+            conversations_data_path=FLAGS.conversations_data_path,
+            test_size=FLAGS.test_size,
+            random_state=FLAGS.random_state,
+            device=device
+        )
 
     # Load data and train models
     chatbot.load_data()
