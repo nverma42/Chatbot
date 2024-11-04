@@ -12,6 +12,16 @@ from gensim.models import LdaModel, TfidfModel
 
 class Emotional_Response(object):
 
+    def __init__(self):
+        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        self.df = pd.read_json(
+            "hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json", lines=True)
+        contexts = self.df['Context'].tolist()
+        processed_data = self.preprocess_data(contexts)
+        self.apply_lda_model(processed_data)
+        self.tag_documents()
+        self.make_conversation_grah()
+
     def get_filtered_base_words(self, query):
         """
         # Lemmatize and filter stop words
@@ -129,7 +139,7 @@ class Emotional_Response(object):
     def make_conversation_grah(self):
         self.graph_dict = {}
         conv_id = -1
-        for idx, row in self.df.iterrows():
+        for _, row in self.df.iterrows():
             topic = row['Topic']
             conv_id = row['Conv_Id']
             if (topic in self.graph_dict):
@@ -149,16 +159,6 @@ class Emotional_Response(object):
                     self.add_new_conv_graph(row)
                 else:
                     self.add_new_conv_graph(row)
-
-    def __init__(self):
-        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        self.df = pd.read_json(
-            "hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json", lines=True)
-        contexts = self.df['Context'].tolist()
-        processed_data = self.preprocess_data(contexts)
-        self.apply_lda_model(processed_data)
-        self.tag_documents()
-        self.make_conversation_grah()
 
     # Work-horse: Get the emotional query response by navigating the graph.
 

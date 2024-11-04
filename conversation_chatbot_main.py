@@ -42,11 +42,10 @@ from absl import app, flags
 from mental_health_chatbot import MentalHealthChatbot
 
 FLAGS = flags.FLAGS
+FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
-flags.DEFINE_string('empathetic_data_path', 'hf://datasets/bdotloh/empathetic-dialogues-contexts/',
-                    'Path to the empathetic dialogues dataset')
-flags.DEFINE_string('conversations_data_path', './data/mental_health_counseling_conversations.csv',
+flags.DEFINE_string('conversations_data_path', 'hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json',
                     'Path to the mental health counseling conversations dataset')
 flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
 flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
@@ -54,11 +53,12 @@ flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
 
 def main(argv):
     """
-    Runs the interactive loop.
+    Runs the interactive loop for the Mental Health Chatbot.
+
+    The chatbot processes user input and categorizes it into informational or emotional types.
     """
     chatbot = MentalHealthChatbot(
         faq_data_path=FLAGS.faq_data_path,
-        empathetic_data_path=FLAGS.empathetic_data_path,
         conversations_data_path=FLAGS.conversations_data_path,
         test_size=FLAGS.test_size,
         random_state=FLAGS.random_state
@@ -69,17 +69,17 @@ def main(argv):
     chatbot.preprocess_data()
     chatbot.train_logistic_classifier()
     chatbot.build_knn_classifier()
-    chatbot.train_emotion_classifier()
 
-    # Interactive loop
+    # Start the interactive loop
     print("Welcome to the Mental Health Chatbot. Type 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
     try:
         while True:
             user_input = input("You: ")
-            # Expanded exit options
+            # Check for exit commands
             if user_input.lower() in ['exit', 'quit', 'q', 'x', 'e']:
                 print("Chatbot: Take care!")
                 break
+            # Get response from the chatbot
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
     except KeyboardInterrupt:
