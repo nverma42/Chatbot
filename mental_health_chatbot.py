@@ -117,6 +117,8 @@ class MentalHealthChatbot:
 
         # Load the encoder model onto the specified device
         self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        # self.encoder = SentenceTransformer('paraphrase-mpnet-base-v2')
+        # self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
         self.encoder.to(self.device)
 
         # Use DataParallel if multiple GPUs are available

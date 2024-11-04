@@ -42,7 +42,9 @@ from mental_health_chatbot import MentalHealthChatbot
 import torch
 import logging
 import subprocess
-import re
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt_tab')
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
@@ -155,7 +157,7 @@ def main(argv):
             device=torch.device(device)
         )
     except torch.OutOfMemoryError:
-        logger.error("Out of memory on all selected devices. Retrying on CPU.")
+        logger.error("\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
         device = torch.device('cpu')
         chatbot = MentalHealthChatbot(
             faq_data_path=FLAGS.faq_data_path,
@@ -172,7 +174,7 @@ def main(argv):
     chatbot.build_knn_classifier()
 
     # Start the interactive loop
-    print("Welcome to the Mental Health Chatbot. Type 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
+    print("\n\nWelcome to the Mental Health Chatbot. \n\nType 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
     try:
         while True:
             user_input = input("You: ")
@@ -184,7 +186,7 @@ def main(argv):
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
     except KeyboardInterrupt:
-        print("\nChatbot: Exiting. Take care!")  # Graceful exit on Ctrl+C
+        print("\n\nChatbot: Exiting. \nTake care!\n\n")  # Graceful exit on Ctrl+C
 
 
 if __name__ == '__main__':
