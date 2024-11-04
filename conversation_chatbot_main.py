@@ -57,33 +57,39 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def get_available_device():
+def get_available_devices(min_memory_required=4 * 1024**3):
     """
-    Checks for available CUDA devices and returns the appropriate device string.
+    Checks all available CUDA devices and returns a list of device IDs that have
+    at least 'min_memory_required' bytes of free memory.
+
+    Args:
+        min_memory_required (int): Minimum required free memory in bytes.
 
     Returns:
-        device (str): The device string ('cuda:X' or 'cpu').
+        List[int]: List of available CUDA device IDs.
     """
+    available_devices = []
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()
         logger.info(f"CUDA is available. Number of GPUs: {num_gpus}")
-        # For simplicity, we'll use the GPU with the most available memory.
-        # Alternatively, we could distribute models across multiple GPUs.
-        # Here we select the GPU with the lowest memory usage.
-        free_memory = []
+
         for idx in range(num_gpus):
-            props = torch.cuda.get_device_properties(idx)
-            # Assuming that more free memory indicates less usage
-            free_memory.append((idx, props.total_memory))
-        # Sort GPUs based on free memory (descending)
-        sorted_gpus = sorted(free_memory, key=lambda x: x[1], reverse=True)
-        selected_gpu = sorted_gpus[0][0]
-        device = f'cuda:{selected_gpu}'
-        logger.info(f"Selected GPU: {device}")
+            # Get total and free memory on the GPU
+            _ = torch.cuda.memory_stats(idx)
+            reserved = torch.cuda.memory_reserved(idx)
+            allocated = torch.cuda.memory_allocated(idx)
+            free_memory = reserved - allocated
+            total_memory = torch.cuda.get_device_properties(idx).total_memory
+
+            logger.info(
+                f"GPU {idx}: Total Memory: {total_memory / (1024**3):.2f} GB, Free Memory: {free_memory / (1024**3):.2f} GB")
+
+            if free_memory >= min_memory_required:
+                available_devices.append(idx)
     else:
         logger.info("CUDA is not available. Using CPU.")
-        device = 'cpu'
-    return device
+
+    return available_devices
 
 
 def main(argv):
@@ -92,14 +98,24 @@ def main(argv):
 
     The chatbot processes user input and categorizes it into informational or emotional types.
     """
-    device = get_available_device()
+    # Get available devices with at least 4GB free memory
+    available_devices = get_available_devices(min_memory_required=4 * 1024**3)
+
+    if available_devices:
+        # Use DataParallel if more than one GPU is available
+        device = torch.device(f'cuda:{available_devices[0]}')
+        logger.info(f"Using GPU(s): {available_devices}")
+    else:
+        device = torch.device('cpu')
+        logger.warning("No suitable GPUs available. Falling back to CPU.")
 
     chatbot = MentalHealthChatbot(
         faq_data_path=FLAGS.faq_data_path,
         conversations_data_path=FLAGS.conversations_data_path,
         test_size=FLAGS.test_size,
         random_state=FLAGS.random_state,
-        device=device  # Pass the device to the chatbot
+        device=device,
+        gpu_ids=available_devices  # Pass the list of available GPUs
     )
 
     # Load data and train models

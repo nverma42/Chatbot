@@ -10,6 +10,7 @@ import networkx as nx
 import nltk
 import numpy as np
 import pandas as pd
+from torch.nn import DataParallel
 from gensim import corpora
 from gensim.models import LdaModel, TfidfModel
 from networkx import DiGraph
@@ -27,7 +28,7 @@ class EmotionalResponse:
     conversation structures to find the best response.
     """
 
-    def __init__(self, device='cpu') -> None:
+    def __init__(self, device='cpu', gpu_ids=None) -> None:
         """
         Initializes the EmotionalResponse instance by loading data, preprocessing it,
         and setting up the necessary models and graphs.
@@ -35,10 +36,16 @@ class EmotionalResponse:
         Args:
             device (str): Device to load models onto ('cpu', 'cuda:X').
         """
-        self.device = device  # Store the device
+        self.device = device
+        self.gpu_ids = gpu_ids
 
-        self.encoder = SentenceTransformer(
-            'paraphrase-MiniLM-L6-v2', device=self.device)
+        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        self.encoder.to(self.device)
+
+        # Use DataParallel if multiple GPUs are available
+        if self.gpu_ids and len(self.gpu_ids) > 1:
+            self.encoder = DataParallel(
+                self.encoder, device_ids=self.gpu_ids)
 
         try:
             self.df = pd.read_json(
@@ -130,13 +137,13 @@ class EmotionalResponse:
 
         self.topics = self.lda_model.print_topics(num_words=25)
 
-        for idx, topic in self.topics:
-            print(f'Topic:{idx}')
-            # Split the topic words into word, probability pairs
-            word_probs = topic.split(' + ')
-            for word_prob in word_probs:
-                prob, word = word_prob.split('*')
-                print(f'Word={word.strip()} Probability={prob}')
+        # for idx, topic in self.topics:
+        #     print(f'Topic:{idx}')
+        #     # Split the topic words into word, probability pairs
+        #     word_probs = topic.split(' + ')
+        #     for word_prob in word_probs:
+        #         prob, word = word_prob.split('*')
+        #         print(f'Word={word.strip()} Probability={prob}')
 
     def get_topic(self, query: str) -> int:
         """
@@ -152,8 +159,11 @@ class EmotionalResponse:
         doc_bow = self.dictionary.doc2bow(filtered_base_words)
         doc_tfidf = self.tfidf_model[doc_bow]
         topics = self.lda_model.get_document_topics(doc_tfidf)
-        topic = max(topics, key=lambda x: x[1])[0]
-        return topic
+        if topics:
+            topic = max(topics, key=lambda x: x[1])[0]
+            return topic
+        else:
+            return -1
 
     def tag_documents(self) -> None:
         """
@@ -240,7 +250,10 @@ class EmotionalResponse:
         topic = self.get_topic(query)
 
         # Find the best matching conversation by matching the root node of conversation with the query.
-        query_embedding = self.encoder.encode(query)
+        query_embedding = self.encoder.encode(
+            query, convert_to_tensor=True, device=self.device)
+        query_embedding = query_embedding.cpu().numpy()
+
         sim_score = 0.0
         target_graph = None
         target_node = None
@@ -249,8 +262,11 @@ class EmotionalResponse:
             root = next(
                 (node for node in conv_graph if conv_graph.in_degree(node) == 0), None)
             if root:
-                root_embedding = self.encoder.encode(root)
-                score = np.dot(query_embedding, root_embedding) / (
+                root_embedding = self.encoder.encode(
+                    root, convert_to_tensor=True, device=self.device)
+                root_embedding = root_embedding.cpu().numpy()
+
+                score = np.dot(query_embedding, root_embedding.T) / (
                     norm(query_embedding) * norm(root_embedding)
                 )
                 if score > sim_score:

@@ -45,6 +45,7 @@ Future Enhancements:
     high-risk situations and direct users to professional help when necessary.
 """
 import pandas as pd
+from torch.nn import DataParallel
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LogisticRegression
@@ -56,7 +57,7 @@ from Emotional_Response import EmotionalResponse
 class MentalHealthChatbot:
     """A chatbot for mental health support."""
 
-    def __init__(self, faq_data_path, conversations_data_path, test_size=0.3, random_state=42, device='cpu'):
+    def __init__(self, faq_data_path, conversations_data_path, test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
         """
         Initializes the MentalHealthChatbot with data paths and configuration parameters.
 
@@ -81,6 +82,7 @@ class MentalHealthChatbot:
         self.test_size = test_size
         self.random_state = random_state
         self.device = device  # Store the device
+        self.gpu_ids = gpu_ids
 
         # Initialize models and data placeholders
         self.encoder = None
@@ -101,13 +103,10 @@ class MentalHealthChatbot:
 
     def preprocess_data(self):
         """
-        Preprocesses and encodes the FAQ questions and emotional queries using Sentence-BERT.
-
-        Returns:
-            None
+        Preprocesses the data and splits it into training and testing sets.
         """
         # Combine datasets and create labels
-        faq_queries = self.faq_df['Question'].tolist()
+        faq_queries = self.faq_df['Questions'].tolist()
         faq_labels = [0] * len(faq_queries)  # 0 for informational
 
         conv_contexts = self.conversations_df['Context'].tolist()
@@ -117,8 +116,13 @@ class MentalHealthChatbot:
         all_labels = faq_labels + conv_labels
 
         # Load the encoder model onto the specified device
-        self.encoder = SentenceTransformer(
-            'paraphrase-MiniLM-L6-v2', device=self.device)
+        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+        self.encoder.to(self.device)
+
+        # Use DataParallel if multiple GPUs are available
+        if self.gpu_ids and len(self.gpu_ids) > 1:
+            self.encoder = DataParallel(
+                self.encoder, device_ids=self.gpu_ids)
 
         # Encode the queries
         self.encoded_queries = self.encoder.encode(
@@ -157,13 +161,10 @@ class MentalHealthChatbot:
 
     def build_knn_classifier(self):
         """
-        Builds a K-Nearest Neighbors (KNN) classifier for retrieving informational responses.
-
-        Returns:
-            None
+        Builds a KNN classifier for informational queries.
         """
-        faq_queries = self.faq_df['Question'].tolist()
-        self.faq_answers = self.faq_df['Answer'].tolist()
+        faq_queries = self.faq_df['Questions'].tolist()
+        self.faq_answers = self.faq_df['Answers'].tolist()
 
         # Encode FAQ queries
         self.encoded_faq_queries = self.encoder.encode(
@@ -173,8 +174,9 @@ class MentalHealthChatbot:
         self.knn_classifier = NearestNeighbors(n_neighbors=1, metric='cosine')
         self.knn_classifier.fit(self.encoded_faq_queries.cpu().numpy())
 
-        # Initialize EmotionalResponse with the same device
-        self.emotional_response = EmotionalResponse(device=self.device)
+        # Initialize EmotionalResponse with the same device and GPU IDs
+        self.emotional_response = EmotionalResponse(
+            device=self.device, gpu_ids=self.gpu_ids)
 
     def get_informational_response(self, query):
         """
@@ -211,7 +213,7 @@ class MentalHealthChatbot:
 
         if prediction[0] == 0:
             # Informational query
-            _, indices = self.knn_classifier.kneighbors(
+            distances, indices = self.knn_classifier.kneighbors(
                 query_embedding)
             answer = self.faq_answers[indices[0][0]]
             return answer
