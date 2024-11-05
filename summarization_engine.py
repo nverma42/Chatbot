@@ -1,4 +1,7 @@
 import logging
+from sumy.parsers.plaintext import PlaintextParser
+from sumy.nlp.tokenizers import Tokenizer
+from sumy.summarizers.lsa import LsaSummarizer
 from sumy.summarizers.text_rank import TextRankSummarizer
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
@@ -55,17 +58,26 @@ class SummarizationEngine:
             text (str): The text to summarize.
 
         Returns:
-            str: The summarized text or a message if input is insufficient.
+            str: The summarized text or an error message if input is insufficient.
         """
+        # Check for empty or whitespace-only input
         if not text.strip():
             return "No content to summarize."
 
         try:
+            # Parse the input text
             parser = PlaintextParser.from_string(
                 text, Tokenizer(self.language))
+
+            # Check if text has enough sentences for summarization
+            if len(text.split('. ')) < self.sentence_count:
+                return "Input text is too short to generate a meaningful summary."
+
+            # Perform summarization
             summary = self.summarizer(parser.document, self.sentence_count)
-            if not summary:
-                return "The input text is too short to generate a meaningful summary."
+
+            # Join sentences to form the summary
             return ' '.join(str(sentence) for sentence in summary)
+
         except Exception as e:
-            return f"An error occurred during summarization: {str(e)}"
+            return f"An error occurred during summarization: {e}"
