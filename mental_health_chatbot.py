@@ -51,13 +51,13 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, precision_recall_fscore_support
-from Emotional_Response import EmotionalResponse
+from emotional_response import EmotionalResponse
 
 
 class MentalHealthChatbot:
     """A chatbot for mental health support."""
 
-    def __init__(self, faq_data_path, conversations_data_path, test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
+    def __init__(self, faq_data_path, conversations_data_path, sentence_encoder="paraphrase-MiniLM-L6-v2", test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
         """
         Initializes the MentalHealthChatbot with data paths and configuration parameters.
 
@@ -85,7 +85,7 @@ class MentalHealthChatbot:
         self.gpu_ids = gpu_ids
 
         # Initialize models and data placeholders
-        self.encoder = None
+        self.encoder = SentenceTransformer(sentence_encoder)
         self.logistic_classifier = None
         self.knn_classifier = None
         self.emotional_response = None
@@ -115,10 +115,7 @@ class MentalHealthChatbot:
         all_queries = faq_queries + conv_contexts
         all_labels = faq_labels + conv_labels
 
-        # Load the encoder model onto the specified device
-        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        # self.encoder = SentenceTransformer('paraphrase-mpnet-base-v2')
-        # self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        # Load the encoder model onto the specified device default is sentence_encoder = paraphrase-MiniLM-L6-v2
         self.encoder.to(self.device)
 
         # Use DataParallel if multiple GPUs are available
@@ -215,7 +212,7 @@ class MentalHealthChatbot:
 
         if prediction[0] == 0:
             # Informational query
-            distances, indices = self.knn_classifier.kneighbors(
+            _, indices = self.knn_classifier.kneighbors(
                 query_embedding)
             answer = self.faq_answers[indices[0][0]]
             return answer

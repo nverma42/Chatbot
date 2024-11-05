@@ -28,20 +28,19 @@ class EmotionalResponse:
     conversation structures to find the best response.
     """
 
-    def __init__(self, device='cpu', gpu_ids=None) -> None:
+    def __init__(self, sentence_encoder="paraphrase-MiniLM-L6-v2", device='cpu', gpu_ids=None) -> None:
         """
         Initializes the EmotionalResponse instance by loading data, preprocessing it,
         and setting up the necessary models and graphs.
 
         Args:
+            sentence_encoder (str): this is the string to represent the sentence transformer, default: paraphrase-MiniLM-L6-v2.
             device (str): Device to load models onto ('cpu', 'cuda:X').
+            gpu_ids: help keep track of which gpu(s) are avaialbe for distributed work.
         """
         self.device = device
         self.gpu_ids = gpu_ids
-
-        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        # self.encoder = SentenceTransformer('paraphrase-mpnet-base-v2')
-        # self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.encoder = SentenceTransformer(sentence_encoder)
         self.encoder.to(self.device)
 
         # Use DataParallel if multiple GPUs are available
