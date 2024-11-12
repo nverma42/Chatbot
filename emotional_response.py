@@ -28,26 +28,23 @@ class EmotionalResponse:
     conversation structures to find the best response.
     """
 
-    def __init__(self, device='cpu', gpu_ids=None) -> None:
+    def __init__(self, sentence_encoder="paraphrase-MiniLM-L6-v2", device='cpu', gpu_ids=None) -> None:
         """
         Initializes the EmotionalResponse instance by loading data, preprocessing it,
         and setting up the necessary models and graphs.
 
         Args:
+            sentence_encoder (str): this is the string to represent the sentence transformer, default: paraphrase-MiniLM-L6-v2.
             device (str): Device to load models onto ('cpu', 'cuda:X').
+            gpu_ids: help keep track of which gpu(s) are avaialbe for distributed work.
         """
         self.device = device
         self.gpu_ids = gpu_ids
-
-        self.encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
-        # self.encoder = SentenceTransformer('paraphrase-mpnet-base-v2')
-        # self.encoder = SentenceTransformer('all-MiniLM-L6-v2')
+        self.encoder = SentenceTransformer(sentence_encoder)
         self.encoder.to(self.device)
 
-        # Use DataParallel if multiple GPUs are available
         if self.gpu_ids and len(self.gpu_ids) > 1:
-            self.encoder = DataParallel(
-                self.encoder, device_ids=self.gpu_ids)
+            self.encoder = DataParallel(self.encoder, device_ids=self.gpu_ids)
 
         try:
             self.df = pd.read_json(
@@ -62,6 +59,8 @@ class EmotionalResponse:
 
         contexts = self.df['Context'].tolist()
         processed_data = self.preprocess_data(contexts)
+
+        # Call apply_lda_model before tag_documents to initialize dictionary
         self.apply_lda_model(processed_data)
         self.tag_documents()
         self.make_conversation_graph()
@@ -157,6 +156,11 @@ class EmotionalResponse:
         Returns:
             int: The topic number with the highest probability.
         """
+        # Ensure dictionary is initialized
+        if not hasattr(self, 'dictionary'):
+            raise AttributeError(
+                "Dictionary is not initialized. Run apply_lda_model first.")
+
         filtered_base_words = self.get_filtered_base_words(query)
         doc_bow = self.dictionary.doc2bow(filtered_base_words)
         doc_tfidf = self.tfidf_model[doc_bow]
@@ -171,6 +175,11 @@ class EmotionalResponse:
         """
         Tags each document in the DataFrame with its corresponding topic and conversation ID.
         """
+        # Ensure dictionary is initialized
+        if not hasattr(self, 'dictionary'):
+            raise AttributeError(
+                "Dictionary is not initialized. Run apply_lda_model first.")
+
         self.df['Topic'] = -1
         self.df['Conv_Id'] = -1
 

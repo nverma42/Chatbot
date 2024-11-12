@@ -39,16 +39,19 @@ Note:
 """
 from absl import app, flags
 from mental_health_chatbot import MentalHealthChatbot
+from summarization_engine import SummarizationEngine
 import torch
 import logging
 import subprocess
-import nltk
-nltk.download('stopwords')
-nltk.download('punkt_tab')
+# import nltk
+# nltk.download('stopwords')
+# nltk.download('punkt_tab')
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
+flags.DEFINE_string(
+    'sentence_encoder', 'paraphrase-MiniLM-L6-v2', 'string of the Sentence Transform')
 flags.DEFINE_string(
     'conversations_data_path',
     'hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json',
@@ -104,41 +107,6 @@ def get_best_available_device(min_memory_required=4.0):
     return 'cpu'
 
 
-def get_available_devices(min_memory_required=4 * 1024**3):
-    """
-    Checks all available CUDA devices and returns a list of device IDs that have
-    at least 'min_memory_required' bytes of free memory.
-
-    Args:
-        min_memory_required (int): Minimum required free memory in bytes.
-
-    Returns:
-        List[int]: List of available CUDA device IDs.
-    """
-    available_devices = []
-    if torch.cuda.is_available():
-        num_gpus = torch.cuda.device_count()
-        logger.info(f"CUDA is available. Number of GPUs: {num_gpus}")
-
-        for idx in range(num_gpus):
-            # Get total and free memory on the GPU
-            _ = torch.cuda.memory_stats(idx)
-            reserved = torch.cuda.memory_reserved(idx)
-            allocated = torch.cuda.memory_allocated(idx)
-            free_memory = reserved - allocated
-            total_memory = torch.cuda.get_device_properties(idx).total_memory
-
-            logger.info(
-                f"GPU {idx}: Total Memory: {total_memory / (1024**3):.2f} GB, Free Memory: {free_memory / (1024**3):.2f} GB")
-
-            if free_memory >= min_memory_required:
-                available_devices.append(idx)
-    else:
-        logger.info("CUDA is not available. Using CPU.")
-
-    return available_devices
-
-
 def main(argv):
     """
     Runs the interactive loop for the Mental Health Chatbot.
@@ -154,16 +122,19 @@ def main(argv):
             conversations_data_path=FLAGS.conversations_data_path,
             test_size=FLAGS.test_size,
             random_state=FLAGS.random_state,
+            sentence_encoder=FLAGS.sentence_encoder,
             device=torch.device(device)
         )
     except torch.OutOfMemoryError:
-        logger.error("\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
+        logger.error(
+            "\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
         device = torch.device('cpu')
         chatbot = MentalHealthChatbot(
             faq_data_path=FLAGS.faq_data_path,
             conversations_data_path=FLAGS.conversations_data_path,
             test_size=FLAGS.test_size,
             random_state=FLAGS.random_state,
+            sentence_encoder=FLAGS.sentence_encoder,
             device=device
         )
 
@@ -174,19 +145,49 @@ def main(argv):
     chatbot.build_knn_classifier()
 
     # Start the interactive loop
+    summarization_engine = SummarizationEngine()
+    session_log = []
+
     print("\n\nWelcome to the Mental Health Chatbot. \n\nType 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
+    print("Type 'summarize' at any time to get a summary of the conversation so far.\n")
     try:
         while True:
             user_input = input("You: ")
             # Check for exit commands
             if user_input.lower() in ['exit', 'quit', 'q', 'x', 'e']:
                 print("Chatbot: Take care!")
+                # Provide summary at the end of the session
+                if session_log:
+                    full_text = ' '.join(session_log)
+                    summary = summarization_engine.summarize_text(full_text)
+                    print("\nSession Summary:")
+                    print(summary)
                 break
+            elif user_input.lower() == 'summarize':
+                # Provide on-demand summary
+                if session_log:
+                    full_text = ' '.join(session_log)
+                    summary = summarization_engine.summarize_text(full_text)
+                    print("\nSummary:")
+                    print(summary)
+                else:
+                    print("\nNo conversation history to summarize yet.")
+                continue
             # Get response from the chatbot
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
+            # Append the interaction to the session log
+            session_log.append(f"You: {user_input}")
+            session_log.append(f"Chatbot: {response}")
     except KeyboardInterrupt:
-        print("\n\nChatbot: Exiting. \nTake care!\n\n")  # Graceful exit on Ctrl+C
+        # Graceful exit on Ctrl+C
+        print("\n\nChatbot: Exiting. \nTake care!\n\n")
+        # Provide summary at the end of the session
+        if session_log:
+            full_text = ' '.join(session_log)
+            summary = summarization_engine.summarize_text(full_text)
+            print("\nSession Summary:")
+            print(summary)
 
 
 if __name__ == '__main__':
