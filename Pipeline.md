@@ -55,14 +55,12 @@ Using conversation graph is better than producing canned responses.
 Anchor uses a model based on topic understanding and information rerieval.
 
 1. The user submits a query.
-2. We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
-3. Thus each situation will have a separate graph. Let us say when someone is
-sad because of relationship issues, how conversation with a counseler proceeds is very predictable.
-4. We will first classify user's situation using LDA classifier.
-5. The ChatBot will then map user's query to a conversation graph.
-6. Then the conversation will flow accordingly.
+2. Anchor first classifies a user query into informational and emotional.
+3. If query is informational, Anchor extracts the response and provides it to the user. There is no need for conversation to continue in this case.
+4. If the query is emotional, it identifies the specific situation a user may be in e.g. relationship issues, addiction issues etc.
+5. It then maps user's query to a conversation graph.
+6. Then the conversation flows according to the closest matching conversation graph in Anchor's database.
 7. Each response will sent to a summarization engine which will produce a compact response.
-For the purpose of demo, we will show both responses.
 
 ## Summarization Engine
 1. Divide the long response in sentences delimited by "." character.
