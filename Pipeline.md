@@ -1,4 +1,4 @@
-# Datasets used for Mental Health Chatbot.
+# Datasets used for Mental Health Chatbot
 
 A. data/Mental_Health_FAQ.csv for informational response
 B. Build a conversation graph by selecting some conversations. There is a lot in this dataset and we may need to curate this data.
@@ -38,7 +38,7 @@ Pipeline of Mental Health Chatbot.
 5. Build emotion graph based on dataset B. The graph is a network X graph which chat bot navigates.
    For example, let us say chatbot detects user wants to discuss their addiction issues.
    Then chatbot figures out the apppropriate topic and pick the best conversation for that topic.
-   
+
 7. We will use similarity based node matching to produce a response.
 
 The canned response file is the mental health FAQ file.
@@ -64,6 +64,7 @@ Each response will sent to a summarization engine which will produce a compact r
 For the purpose of demo, we will show both responses.
 
 ## Summarization Engine
+
 1. Divide the long response in sentences delimited by "." character.
 2. Encode user query and each sentence with SentenceTransformer encoder. This step is called vectorization of sentences.
 3. Compute the cosine similarity for each sentence and query using numpy dot and norm functions. An example is given here:
@@ -79,7 +80,7 @@ k = 3 # Top k sentences
 
 4.1 Loop until top k sentences have been selected.
 4.2. Calculate the relevance of a sentence not currently in the summary set using the formula:
-     MMR = lambda * Cosine Similarity(Q, S) - (1- lambda) * Highest Cosine Similarity to already existing sentences in the summary.
+     MMR = lambda *Cosine Similarity(Q, S) - (1- lambda)* Highest Cosine Similarity to already existing sentences in the summary.
      Choose the sentence with maximum MMR score and add to the summary.
 4.3 Go back to 4.1
 
@@ -87,4 +88,3 @@ k = 3 # Top k sentences
    Summary = {S0, S3, S5}
 
 But the original ordering in the text was S3, S0 and then S5, then our summary would in the original order. <=== Our novelty
-
