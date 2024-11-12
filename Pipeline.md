@@ -53,14 +53,14 @@ Using conversation graph is better than producing canned responses.
 
 # How will this process work?
 
-The user submits a query.
-We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
-Thus each situation will have a separate graph. Let us say when someone is
+1. The user submits a query.
+2. We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
+3. Thus each situation will have a separate graph. Let us say when someone is
 sad because of relationship issues, how conversation with a counseler proceeds is very predictable.
-We will first classify user's situation using LDA classifier.
-The ChatBot will then map user's query to a conversation graph.
-Then the conversation will flow accordingly.
-Each response will sent to a summarization engine which will produce a compact response.
+4. We will first classify user's situation using LDA classifier.
+5. The ChatBot will then map user's query to a conversation graph.
+6. Then the conversation will flow accordingly.
+7. Each response will sent to a summarization engine which will produce a compact response.
 For the purpose of demo, we will show both responses.
 
 ## Summarization Engine
