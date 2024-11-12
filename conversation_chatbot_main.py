@@ -37,53 +37,156 @@ Note:
     (FAQ, empathetic dialogues, counseling conversations) are available and paths
   are correctly specified using command-line flags or default values.
 """
-# Read empathetic dialogues context
 from absl import app, flags
 from mental_health_chatbot import MentalHealthChatbot
+import torch
+import logging
+import subprocess
+import nltk
+nltk.download('stopwords')
+nltk.download('punkt_tab')
 
 FLAGS = flags.FLAGS
 flags.DEFINE_string(
     'faq_data_path', './data/Mental_Health_FAQ.csv', 'Path to the FAQ dataset')
-flags.DEFINE_string('empathetic_data_path', 'hf://datasets/bdotloh/empathetic-dialogues-contexts/',
-                    'Path to the empathetic dialogues dataset')
-flags.DEFINE_string('conversations_data_path', './data/mental_health_counseling_conversations.csv',
-                    'Path to the mental health counseling conversations dataset')
+flags.DEFINE_string(
+    'conversations_data_path',
+    'hf://datasets/Amod/mental_health_counseling_conversations/combined_dataset.json',
+    'Path to the mental health counseling conversations dataset')
 flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
 flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def get_gpu_memory_info():
+    """
+    Uses nvidia-smi to get accurate memory usage for each GPU.
+
+    Returns:
+        List[Tuple[int, float]]: List of tuples containing (GPU ID, free memory in GB).
+    """
+    try:
+        result = subprocess.check_output(
+            ['nvidia-smi', '--query-gpu=memory.free', '--format=csv,noheader,nounits'])
+        memory_info = result.decode('utf-8').strip().split('\n')
+        gpu_info = [(i, float(mem)) for i, mem in enumerate(memory_info)]
+        return gpu_info
+    except subprocess.CalledProcessError as e:
+        logger.error("Failed to run nvidia-smi: " + str(e))
+        return []
+
+
+def get_best_available_device(min_memory_required=4.0):
+    """
+    Checks available GPUs using nvidia-smi and selects the best GPU based on free memory.
+    Falls back to CPU if no GPU has enough available memory.
+
+    Args:
+        min_memory_required (float): Minimum required free memory in GB.
+
+    Returns:
+        str: The best device string ('cuda:X' or 'cpu').
+    """
+    gpu_info = get_gpu_memory_info()
+    if gpu_info:
+        available_gpus = [(gpu_id, mem)
+                          for gpu_id, mem in gpu_info if mem >= min_memory_required]
+        if available_gpus:
+            # Sort by the most free memory available
+            selected_gpu = max(available_gpus, key=lambda x: x[1])[0]
+            logger.info(
+                f"Selected GPU: cuda:{selected_gpu} with {dict(gpu_info)[selected_gpu]:.2f} GB free")
+            return f'cuda:{selected_gpu}'
+    logger.warning("No suitable GPUs available. Falling back to CPU.")
+    return 'cpu'
+
+
+def get_available_devices(min_memory_required=4 * 1024**3):
+    """
+    Checks all available CUDA devices and returns a list of device IDs that have
+    at least 'min_memory_required' bytes of free memory.
+
+    Args:
+        min_memory_required (int): Minimum required free memory in bytes.
+
+    Returns:
+        List[int]: List of available CUDA device IDs.
+    """
+    available_devices = []
+    if torch.cuda.is_available():
+        num_gpus = torch.cuda.device_count()
+        logger.info(f"CUDA is available. Number of GPUs: {num_gpus}")
+
+        for idx in range(num_gpus):
+            # Get total and free memory on the GPU
+            _ = torch.cuda.memory_stats(idx)
+            reserved = torch.cuda.memory_reserved(idx)
+            allocated = torch.cuda.memory_allocated(idx)
+            free_memory = reserved - allocated
+            total_memory = torch.cuda.get_device_properties(idx).total_memory
+
+            logger.info(
+                f"GPU {idx}: Total Memory: {total_memory / (1024**3):.2f} GB, Free Memory: {free_memory / (1024**3):.2f} GB")
+
+            if free_memory >= min_memory_required:
+                available_devices.append(idx)
+    else:
+        logger.info("CUDA is not available. Using CPU.")
+
+    return available_devices
 
 
 def main(argv):
     """
-    Runs the interactive loop.
+    Runs the interactive loop for the Mental Health Chatbot.
+
+    The chatbot processes user input and categorizes it into informational or emotional types.
     """
-    chatbot = MentalHealthChatbot(
-        faq_data_path=FLAGS.faq_data_path,
-        empathetic_data_path=FLAGS.empathetic_data_path,
-        conversations_data_path=FLAGS.conversations_data_path,
-        test_size=FLAGS.test_size,
-        random_state=FLAGS.random_state
-    )
+    device = get_best_available_device(min_memory_required=4.0)
+
+    # Ensure that model loads properly on the selected device
+    try:
+        chatbot = MentalHealthChatbot(
+            faq_data_path=FLAGS.faq_data_path,
+            conversations_data_path=FLAGS.conversations_data_path,
+            test_size=FLAGS.test_size,
+            random_state=FLAGS.random_state,
+            device=torch.device(device)
+        )
+    except torch.OutOfMemoryError:
+        logger.error("\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
+        device = torch.device('cpu')
+        chatbot = MentalHealthChatbot(
+            faq_data_path=FLAGS.faq_data_path,
+            conversations_data_path=FLAGS.conversations_data_path,
+            test_size=FLAGS.test_size,
+            random_state=FLAGS.random_state,
+            device=device
+        )
 
     # Load data and train models
     chatbot.load_data()
     chatbot.preprocess_data()
     chatbot.train_logistic_classifier()
     chatbot.build_knn_classifier()
-    chatbot.train_emotion_classifier()
 
-    # Interactive loop
-    print("Welcome to the Mental Health Chatbot. Type 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
+    # Start the interactive loop
+    print("\n\nWelcome to the Mental Health Chatbot. \n\nType 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
     try:
         while True:
             user_input = input("You: ")
-            # Expanded exit options
+            # Check for exit commands
             if user_input.lower() in ['exit', 'quit', 'q', 'x', 'e']:
                 print("Chatbot: Take care!")
                 break
+            # Get response from the chatbot
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
     except KeyboardInterrupt:
-        print("\nChatbot: Exiting. Take care!")  # Graceful exit on Ctrl+C
+        print("\n\nChatbot: Exiting. \nTake care!\n\n")  # Graceful exit on Ctrl+C
 
 
 if __name__ == '__main__':
