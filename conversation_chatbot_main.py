@@ -39,7 +39,7 @@ Note:
 """
 from absl import app, flags
 from mental_health_chatbot import MentalHealthChatbot
-from summarization_engine import SummarizationEngine
+from summarization_engine import EnhancedSummarizationEngine
 import torch
 import logging
 import subprocess
@@ -58,6 +58,22 @@ flags.DEFINE_string(
     'Path to the mental health counseling conversations dataset')
 flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
 flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
+# Add new flags for summarization engine
+flags.DEFINE_string(
+    'sentence_transformer_model',
+    'paraphrase-MiniLM-L6-v2',
+    'Model name for sentence transformer'
+)
+flags.DEFINE_float(
+    'summarization_lambda',
+    0.7,
+    'Lambda parameter for MMR summarization'
+)
+flags.DEFINE_integer(
+    'summary_sentences',
+    3,
+    'Number of sentences in summary'
+)
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -114,12 +130,10 @@ def get_best_available_device(min_memory_required=4.0):
 def main(argv):
     """
     Runs the interactive loop for the Mental Health Chatbot.
-
-    The chatbot processes user input and categorizes it into informational or emotional types.
     """
     device = get_best_available_device(min_memory_required=4.0)
 
-    # Ensure that model loads properly on the selected device
+    # Initialize chatbot with selected device
     try:
         chatbot = MentalHealthChatbot(
             faq_data_path=FLAGS.faq_data_path,
@@ -132,15 +146,23 @@ def main(argv):
     except torch.OutOfMemoryError:
         logger.error(
             "\n!!\nOut of memory on all selected devices. \n!!\nRetrying on CPU.")
-        device = torch.device('cpu')
+        device = 'cpu'
         chatbot = MentalHealthChatbot(
             faq_data_path=FLAGS.faq_data_path,
             conversations_data_path=FLAGS.conversations_data_path,
             test_size=FLAGS.test_size,
             random_state=FLAGS.random_state,
             sentence_encoder=FLAGS.sentence_encoder,
-            device=device
+            device=torch.device(device)
         )
+
+    # Initialize the enhanced summarization engine with the same device
+    summarization_engine = EnhancedSummarizationEngine(
+        model_name=FLAGS.sentence_transformer_model,
+        lambda_param=FLAGS.summarization_lambda,
+        top_k=FLAGS.summary_sentences,
+        device=device
+    )
 
     # Load data and train models
     chatbot.load_data()
@@ -149,53 +171,71 @@ def main(argv):
     chatbot.build_knn_classifier()
 
     # Start the interactive loop
-    summarization_engine = SummarizationEngine()
     session_log = []
 
     print("\n\nWelcome to the Mental Health Chatbot. \n\nType 'exit', 'quit', 'q', 'x', or press 'Ctrl+C' to quit.")
     print("Type 'summarize' at any time to get a summary of the conversation so far.\n")
+
     try:
         while True:
             user_input = input("You: ")
+
             # Check for exit commands
             if user_input.lower() in ['exit', 'quit', 'q', 'x', 'e']:
                 print("Chatbot: Take care!")
                 # Provide summary at the end of the session
                 if session_log:
                     full_text = ' '.join(session_log)
-                    summary = summarization_engine.summarize_text(full_text)
+                    summary_result = summarization_engine.summarize(
+                        full_text,
+                        query="What were the main points discussed in this conversation?"
+                    )
                     print("\nSession Summary:")
-                    print(summary)
+                    print(summary_result['summary'])
                 break
+
             elif user_input.lower() == 'summarize':
                 # Provide on-demand summary
                 if session_log:
                     full_text = ' '.join(session_log)
-                    summary = summarization_engine.summarize_text_MMR(question, response)
+                    summary_result = summarization_engine.summarize(
+                        full_text,
+                        query="What were the key points in our recent discussion?"
+                    )
                     print("\nSummary:")
-                    print(summary)
+                    print(summary_result['summary'])
+                    # Optionally show metadata for debugging
+                    if logger.level == logging.DEBUG:
+                        print("\nDebug Info:")
+                        print(
+                            f"Original sentences: {summary_result['original_sentences']}")
+                        print(
+                            f"Selected sentences: {summary_result['selected_sentences']}")
                 else:
                     print("\nNo conversation history to summarize yet.")
-                continue
-            elif (len(user_input) == 0):
                 continue
 
             # Get response from the chatbot
             question = user_input
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
+
             # Append the interaction to the session log
             session_log.append(f"You: {user_input}")
             session_log.append(f"Chatbot: {response}")
+
     except KeyboardInterrupt:
         # Graceful exit on Ctrl+C
         print("\n\nChatbot: Exiting. \nTake care!\n\n")
         # Provide summary at the end of the session
         if session_log:
             full_text = ' '.join(session_log)
-            summary = summarization_engine.summarize_text(full_text)
+            summary_result = summarization_engine.summarize(
+                full_text,
+                query="What were the main points discussed in this conversation?"
+            )
             print("\nSession Summary:")
-            print(summary)
+            print(summary_result['summary'])
 
 
 if __name__ == '__main__':
