@@ -52,6 +52,7 @@ So we need to add df_B dataframe to get this data.
 Using conversation graph is better than producing canned responses.
 
 # How Anchor works?
+Anchor uses a model based on topic understanding and information rerieval.
 
 1. The user submits a query.
 2. We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
