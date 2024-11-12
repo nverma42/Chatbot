@@ -88,3 +88,19 @@ k = 3 # Top k sentences
 
 But the original ordering in the text was S3, S0 and then S5, then our summary would in the original order. <=== Our novelty
 
+## Model Performance
+We evaluated two performance metrics, Model coherence and Model Perplexity. Model coherence indicates the coherence of topic words in the LDA model. 
+The best coherence metric of 0.45 was obtained when number of topics were set to 7. 
+The coherence metric of 0.45 indicates that topics are well formed, although there is a room for improvement.
+
+The perplexity metric indicates how good the natural language model is in its predictions/ In the context of Latent Dirichlet Allocation (LDA), perplexity is a measure of how well the model fits the given set of documents, similar to how it's used in language models. Specifically, for LDA, perplexity quantifies how "surprised" the model is by the words in a held-out test set of documents, based on the topics it learned during training. 
+We obtained moderately good values for log perplexity in the range of [-8, -9]
+
+
+For LDA, a lower (more negative) log perplexity generally suggests better model fit to the data. If the LDA model achieves a very negative log-perplexity score and good topic coherence, it may be better at representing specific topics or contextually relevant topics for the data.
+
+Comparing the model with hugging face model : [mental-health-mistral-7b-instructv0.2-finetuned-V2] (https://huggingface.co/GRMenon/mental-health-mistral-7b-instructv0.2-finetuned-V2)
+
+
+
+
