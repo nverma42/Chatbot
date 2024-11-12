@@ -45,6 +45,7 @@ Future Enhancements:
     high-risk situations and direct users to professional help when necessary.
 """
 import pandas as pd
+import torch
 from torch.nn import DataParallel
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
@@ -142,6 +143,7 @@ class MentalHealthChatbot:
             None
         """
         self.logistic_classifier = LogisticRegression(
+            class_weight='balanced',
             random_state=self.random_state)
         self.logistic_classifier.fit(self.X_train, self.y_train)
         # X_train, X_test, y_train, y_test = train_test_split(

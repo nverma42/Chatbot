@@ -60,9 +60,13 @@ flags.DEFINE_float('test_size', 0.3, 'Test set size as a fraction')
 flags.DEFINE_integer('random_state', 42, 'Random seed for reproducibility')
 
 # Set up logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+logger.setLevel(logging.WARNING)
+logging.getLogger('sentence_transformers').setLevel(logging.WARNING)
+logging.getLogger('sklearn').setLevel(logging.WARNING)
+logging.getLogger('torch').setLevel(logging.WARNING)
+logging.getLogger('networkx').setLevel(logging.WARNING)
+logging.getLogger('gensim').setLevel(logging.WARNING)
 
 def get_gpu_memory_info():
     """
@@ -97,7 +101,7 @@ def get_best_available_device(min_memory_required=4.0):
     if gpu_info:
         available_gpus = [(gpu_id, mem)
                           for gpu_id, mem in gpu_info if mem >= min_memory_required]
-        if available_gpus:
+        if available_gpus and torch.cuda.is_available():
             # Sort by the most free memory available
             selected_gpu = max(available_gpus, key=lambda x: x[1])[0]
             logger.info(
@@ -173,6 +177,9 @@ def main(argv):
                 else:
                     print("\nNo conversation history to summarize yet.")
                 continue
+            elif (len(user_input) == 0):
+                continue
+
             # Get response from the chatbot
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
