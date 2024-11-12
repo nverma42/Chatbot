@@ -51,7 +51,7 @@ So we need to add df_B dataframe to get this data.
 
 Using conversation graph is better than producing canned responses.
 
-# How will this process work?
+# How Anchor works?
 
 1. The user submits a query.
 2. We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
