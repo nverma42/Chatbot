@@ -41,8 +41,6 @@ Pipeline of Mental Health Chatbot.
    
 7. We will use similarity based node matching to produce a response.
 
-```py
-We do not neeed data/canned_response.csv.
 The canned response file is the mental health FAQ file.
 
 A conversation graph will be created based on previous counseling sessions.
@@ -53,17 +51,40 @@ So we need to add df_B dataframe to get this data.
 
 Using conversation graph is better than producing canned responses.
 
-How will this process work?
+# How will this process work?
 
-This data has conversations with a counselor.
+The user submits a query.
 We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
 Thus each situation will have a separate graph. Let us say when someone is
 sad because of relationship issues, how conversation with a counseler proceeds is very predictable.
-We will first classify user's situation.
-The ChatBot will then map user's query to a graph.
-Then the conversation will proceed accordingly.
+We will first classify user's situation using LDA classifier.
+The ChatBot will then map user's query to a conversation graph.
+Then the conversation will flow accordingly.
 Each response will sent to a summarization engine which will produce a compact response.
-For the purpose of demo, we will show both response.
-We do not have a lot of conversation data, so chatbot won't
-be able to chat for long but for our project this should be fine.
-```
+For the purpose of demo, we will show both responses.
+
+## Summarization Engine
+1. Divide the long response in sentences delimited by "." character.
+2. Encode user query and each sentence with SentenceTransformer encoder. This step is called vectorization of sentences.
+3. Compute the cosine similarity for each sentence and query using numpy dot and norm functions. An example is given here:
+   similarity score = np.dot(query_embedding, sentence_embedding.T) / (
+    norm(query_embedding) * norm(sentence_embedding)
+
+4. Choose the relevance sentences
+Initialization: Choose the sentence with the highest similarity to query. This is most relevant sentence in the summary.
+Summary = {S0}
+
+Choose a parameter lambda = 0.7 # Weighting parameter
+k = 3 # Top k sentences
+
+4.1 Loop until top k sentences have been selected.
+4.2. Calculate the relevance of a sentence not currently in the summary set using the formula:
+     MMR = lambda * Cosine Similarity(Q, S) - (1- lambda) * Highest Cosine Similarity to already existing sentences in the summary.
+     Choose the sentence with maximum MMR score and add to the summary.
+4.3 Go back to 4.1
+
+5. Information Ordering: Order the sentences in the summary by their original ordering. For example, we get the following summary set:
+   Summary = {S0, S3, S5}
+
+But the original ordering in the text was S3, S0 and then S5, then our summary would in the original order. <=== Our novelty
+
