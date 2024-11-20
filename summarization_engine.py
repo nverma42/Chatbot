@@ -1,4 +1,5 @@
 import logging
+from telnetlib import DO
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
 from sumy.summarizers.lsa import LsaSummarizer
@@ -6,6 +7,10 @@ from sumy.summarizers.text_rank import TextRankSummarizer
 from sumy.summarizers.lsa import LsaSummarizer
 from sumy.summarizers.lex_rank import LexRankSummarizer
 from nltk.corpus import stopwords
+from sentence_transformers import SentenceTransformer
+from numpy.linalg import norm
+import numpy as np
+import sys
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,3 +86,66 @@ class SummarizationEngine:
 
         except Exception as e:
             return f"An error occurred during summarization: {e}"
+    
+    def best_cosine_similarity(self, v, v_list):
+        best_score = 0
+        for i in (range(len(v_list))):
+            score = np.dot(v, v_list[i]) /(norm(v) * norm(v_list[i]))
+            if (score > best_score):
+                best_score = score
+        return best_score
+
+    def summarize_text_MMR(self, question, answer):
+        """
+        Summarizes the input text into a specified number of sentences using maximum
+        marginal relevance method.
+
+        Args:
+            text (str): The text to summarize.
+
+        Returns:
+            str: The summarized text or an error message if input is insufficient.
+        """
+        # Check for empty or whitespace-only input
+        if not answer.strip():
+            return "No content to summarize."
+
+        # Parse the text in individual sentences
+        answer_sentences = answer.split('. ')
+
+        # Load pretrained Sentence-BERT model.
+        encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
+        A = encoder.encode(answer_sentences)
+        q = encoder.encode(question)
+
+        # Run the MMR loop
+        w = 0.7
+        count = 0
+        S = []
+        S_v = []
+        while (count < self.sentence_count):
+            best_score = -sys.float_info.max
+            best_index = -1
+            for i in (range(len(A))):
+                score = w * np.dot(q, A[i]) /(norm(q) * norm(A[i]))
+                score -= (1-w) * self.best_cosine_similarity(A[i], S_v)
+                if (score > best_score and i not in S):
+                    best_score = score
+                    best_index = i
+
+            S.append(best_index)
+            S_v.append(A[best_index])
+            count += 1
+
+        # Sort the array
+        sorted_S = np.sort(S)
+
+        summary = ''
+        for k in sorted_S:
+            summary += answer_sentences[k] + '.'
+
+        return summary
+
+        
+
