@@ -4,21 +4,24 @@ based on input queries by utilizing NLP techniques such as LDA for topic modelin
 and semantic similarity for response selection.
 """
 import random
-from typing import List, Dict
-
+import logging
+from typing import List, Dict, Tuple
 import networkx as nx
 import nltk
 import numpy as np
 import pandas as pd
-from torch.nn import DataParallel
+import torch
 from gensim import corpora
-from gensim.models import LdaModel, TfidfModel, CoherenceModel
+from gensim.models import LdaModel, TfidfModel
 from networkx import DiGraph
 from nltk import word_tokenize
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from numpy.linalg import norm
 from sentence_transformers import SentenceTransformer
+
+# Set up logging
+logger = logging.getLogger(__name__)
 
 
 class EmotionalResponse:
@@ -39,12 +42,12 @@ class EmotionalResponse:
             gpu_ids: help keep track of which gpu(s) are avaialbe for distributed work.
         """
         self.device = device
+        if isinstance(self.device, str):
+            self.device = torch.device(self.device)
+
         self.gpu_ids = gpu_ids
         self.encoder = SentenceTransformer(sentence_encoder)
         self.encoder.to(self.device)
-
-        if self.gpu_ids and len(self.gpu_ids) > 1:
-            self.encoder = DataParallel(self.encoder, device_ids=self.gpu_ids)
 
         try:
             self.df = pd.read_json(
@@ -60,7 +63,6 @@ class EmotionalResponse:
         contexts = self.df['Context'].tolist()
         processed_data = self.preprocess_data(contexts)
 
-        # Call apply_lda_model before tag_documents to initialize dictionary
         self.apply_lda_model(processed_data)
         self.tag_documents()
         self.make_conversation_graph()
@@ -125,7 +127,7 @@ class EmotionalResponse:
 
         # Transform the bag of words model to tf-idf model
         self.corpus_tfidf = self.tfidf_model[self.corpus_bow]
-        
+
         '''
         Model Tuning
         best_model = None
@@ -158,14 +160,14 @@ class EmotionalResponse:
 
         n_topics = 7
         self.lda_model = LdaModel(
-                             self.corpus_tfidf,
-                             num_topics=n_topics,
-                             id2word=self.dictionary,
-                             alpha=0.01,
-                             eta=0.01,
-                             passes=20,
-                             random_state=42
-                             )
+            self.corpus_tfidf,
+            num_topics=n_topics,
+            id2word=self.dictionary,
+            alpha=0.01,
+            eta=0.01,
+            passes=20,
+            random_state=42
+        )
         self.topics = self.lda_model.print_topics(num_words=25)
 
         # for idx, topic in self.topics:
@@ -175,9 +177,6 @@ class EmotionalResponse:
         #     for word_prob in word_probs:
         #         prob, word = word_prob.split('*')
         #         print(f'Word={word.strip()} Probability={prob}')
-
-
-
 
     def get_topic(self, query: str) -> int:
         """
@@ -284,46 +283,82 @@ class EmotionalResponse:
     def get_response(self, query: str) -> str:
         """
         Generates an emotional response to the input query by navigating the conversation graph.
-
-        Args:
-            query (str): The input query string.
-
-        Returns:
-            str: The generated response.
         """
-        topic = self.get_topic(query)
+        try:
+            topic = self.get_topic(query)
 
-        # Find the best matching conversation by matching the root node of conversation with the query.
-        query_embedding = self.encoder.encode(
-            query, convert_to_tensor=True, device=self.device)
-        query_embedding = query_embedding.cpu().numpy()
+            # Find the best matching conversation
+            query_embedding = self.encode_text(query)
+            query_embedding = query_embedding.cpu().numpy()
 
-        sim_score = 0.0
-        target_graph = None
-        target_node = None
+            sim_score = 0.0
+            target_graph = None
+            target_node = None
 
-        for conv_graph in self.graph_dict.get(topic, {}).values():
-            root = next(
-                (node for node in conv_graph if conv_graph.in_degree(node) == 0), None)
-            if root:
-                root_embedding = self.encoder.encode(
-                    root, convert_to_tensor=True, device=self.device)
-                root_embedding = root_embedding.cpu().numpy()
-
-                score = np.dot(query_embedding, root_embedding.T) / (
-                    norm(query_embedding) * norm(root_embedding)
+            for conv_graph in self.graph_dict.get(topic, {}).values():
+                root = next(
+                    (node for node in conv_graph if conv_graph.in_degree(node) == 0),
+                    None
                 )
-                if score > sim_score:
-                    target_graph = conv_graph
-                    target_node = root
-                    sim_score = score
+                if root:
+                    root_embedding = self.encode_text(root)
+                    root_embedding = root_embedding.cpu().numpy()
 
-        # Get the neighbors of the target node
-        if target_graph and target_node:
-            neighbors = list(target_graph.neighbors(target_node))
-            if neighbors:
-                selected_neighbor = random.choice(neighbors)
-                return selected_neighbor
+                    score = np.dot(query_embedding, root_embedding.T) / (
+                        norm(query_embedding) * norm(root_embedding)
+                    )
+                    if score > sim_score:
+                        target_graph = conv_graph
+                        target_node = root
+                        sim_score = score
 
-        default_response = "I'm sorry, I don't have enough information on this topic to help you."
-        return default_response
+            # Get the neighbors of the target node
+            if target_graph and target_node:
+                neighbors = list(target_graph.neighbors(target_node))
+                if neighbors:
+                    selected_neighbor = random.choice(neighbors)
+                    return selected_neighbor
+
+            return "I understand you're going through a difficult time. While I'm here to listen, it might be helpful to speak with a mental health professional who can provide more personalized support."
+
+        except Exception as e:
+            logger.error(f"Error generating response: {str(e)}")
+            return "I apologize, but I'm having trouble processing your message. Could you try expressing that in a different way?"
+
+    def encode_text(self, texts, batch_size=32):
+        """
+        Wrapper method to handle encoding with batching and proper error handling.
+        """
+        try:
+            if isinstance(texts, str):
+                texts = [texts]
+
+            # Process in batches if needed
+            if len(texts) > batch_size:
+                encodings = []
+                for i in range(0, len(texts), batch_size):
+                    batch = texts[i:i + batch_size]
+                    batch_encoding = self.encoder.encode(
+                        batch,
+                        convert_to_tensor=True,
+                        device=self.device
+                    )
+                    encodings.append(batch_encoding.cpu())
+                return torch.cat(encodings, dim=0)
+            else:
+                return self.encoder.encode(
+                    texts,
+                    convert_to_tensor=True,
+                    device=self.device
+                )
+
+        except RuntimeError as e:
+            if "out of memory" in str(e):
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                # Fall back to CPU
+                self.device = torch.device('cpu')
+                self.encoder.to(self.device)
+                # Retry with new device
+                return self.encode_text(texts, batch_size)
+            raise e
