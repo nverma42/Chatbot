@@ -11,6 +11,8 @@ from sentence_transformers import SentenceTransformer
 from numpy.linalg import norm
 import numpy as np
 import sys
+import nltk
+from nltk import sent_tokenize
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -111,7 +113,7 @@ class SummarizationEngine:
             return "No content to summarize."
 
         # Parse the text in individual sentences
-        answer_sentences = answer.split('. ')
+        answer_sentences = sent_tokenize(answer)
 
         # Load pretrained Sentence-BERT model.
         encoder = SentenceTransformer('paraphrase-MiniLM-L6-v2')
@@ -143,7 +145,7 @@ class SummarizationEngine:
 
         summary = ''
         for k in sorted_S:
-            summary += answer_sentences[k] + '.'
+            summary += answer_sentences[k]
 
         return summary
 
