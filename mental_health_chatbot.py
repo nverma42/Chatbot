@@ -79,6 +79,16 @@ class MentalHealthChatbot:
             y (list): Labels corresponding to the FAQ and emotional data.
             emotional_response_handler (EmotionalResponse): Instance of EmotionalResponse class to handle emotional queries.
         """
+
+
+class MentalHealthChatbot:
+    """A chatbot for mental health support."""
+
+    def __init__(self, faq_data_path, conversations_data_path, sentence_encoder="paraphrase-MiniLM-L6-v2",
+                 test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
+        """
+        Initializes the MentalHealthChatbot with data paths and configuration parameters.
+        """
         self.faq_data_path = faq_data_path
         self.conversations_data_path = conversations_data_path
         self.test_size = test_size
@@ -87,16 +97,24 @@ class MentalHealthChatbot:
         self.gpu_ids = gpu_ids
 
         # Initialize the encoder
-        self.base_encoder = SentenceTransformer(sentence_encoder)
-        self.base_encoder.to(self.device)
+        self.encoder = SentenceTransformer(sentence_encoder)
 
-        # If using multiple GPUs, wrap the model
-        if self.gpu_ids and len(self.gpu_ids) > 1:
-            # We'll only wrap the transformer model component
-            self.base_encoder.transformer = DataParallel(
-                self.base_encoder.transformer,
-                device_ids=self.gpu_ids
-            )
+        # Move model to appropriate device
+        if isinstance(self.device, str):
+            self.device = torch.device(self.device)
+        self.encoder.to(self.device)
+
+        # Initialize empty placeholders
+        self.logistic_classifier = None
+        self.knn_classifier = None
+        self.emotional_response = None
+        self.faq_df = None
+        self.conversations_df = None
+        self.encoded_queries = None
+        self.X_train = None
+        self.X_test = None
+        self.y_train = None
+        self.y_test = None
 
     def load_data(self):
         """
@@ -123,12 +141,20 @@ class MentalHealthChatbot:
         all_queries = faq_queries + conv_contexts
         all_labels = faq_labels + conv_labels
 
-        # Use the wrapper method for encoding
-        self.encoded_queries = self.encode_text(all_queries)
+        # Process in batches if the dataset is large
+        batch_size = 32  # Adjust based on available memory
+        self.encoded_queries = []
+
+        for i in range(0, len(all_queries), batch_size):
+            batch = all_queries[i:i + batch_size]
+            batch_encodings = self.encode_text(batch)
+            self.encoded_queries.append(batch_encodings.cpu())
+
+        self.encoded_queries = torch.cat(self.encoded_queries, dim=0)
 
         # Split the data
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.encoded_queries.cpu().numpy(),
+            self.encoded_queries.numpy(),
             all_labels,
             test_size=self.test_size,
             random_state=self.random_state
@@ -144,8 +170,14 @@ class MentalHealthChatbot:
         """
         self.logistic_classifier = LogisticRegression(
             class_weight='balanced',
-            random_state=self.random_state)
+            random_state=self.random_state,
+            max_iter=1000  # Increase max iterations to ensure convergence
+        )
         self.logistic_classifier.fit(self.X_train, self.y_train)
+        # self.logistic_classifier = LogisticRegression(
+        #     class_weight='balanced',
+        #     random_state=self.random_state)
+        # self.logistic_classifier.fit(self.X_train, self.y_train)
         # X_train, X_test, y_train, y_test = train_test_split(
         #     self.X, self.y, test_size=self.test_size, random_state=self.random_state
         # )
@@ -167,28 +199,51 @@ class MentalHealthChatbot:
         faq_queries = self.faq_df['Questions'].tolist()
         self.faq_answers = self.faq_df['Answers'].tolist()
 
-        # Use the wrapper method for encoding
-        self.encoded_faq_queries = self.encode_text(faq_queries)
+        # Encode FAQ queries in batches
+        batch_size = 32
+        encoded_faqs = []
+
+        for i in range(0, len(faq_queries), batch_size):
+            batch = faq_queries[i:i + batch_size]
+            batch_encodings = self.encode_text(batch)
+            encoded_faqs.append(batch_encodings.cpu())
+
+        self.encoded_faq_queries = torch.cat(encoded_faqs, dim=0)
 
         # Build KNN model
         self.knn_classifier = NearestNeighbors(n_neighbors=1, metric='cosine')
-        self.knn_classifier.fit(self.encoded_faq_queries.cpu().numpy())
+        self.knn_classifier.fit(self.encoded_faq_queries.numpy())
 
-        # Initialize EmotionalResponse with the same device and GPU IDs
+        # Initialize EmotionalResponse with the same device configuration
         self.emotional_response = EmotionalResponse(
-            device=self.device,
+            device=self.device.type,  # Convert torch.device to string
             gpu_ids=self.gpu_ids
         )
 
     def encode_text(self, texts):
         """
-        Wrapper method to handle encoding with both single and multi-GPU setups.
+        Wrapper method to handle encoding with proper error handling.
         """
-        return self.base_encoder.encode(
-            texts,
-            convert_to_tensor=True,
-            device=self.device
-        )
+        try:
+            return self.encoder.encode(
+                texts,
+                convert_to_tensor=True,
+                device=self.device
+            )
+        except RuntimeError as e:
+            if "out of memory" in str(e):
+                # If we run out of memory, clear cache and try again
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                # If still fails, fall back to CPU
+                self.device = torch.device('cpu')
+                self.encoder.to(self.device)
+                return self.encoder.encode(
+                    texts,
+                    convert_to_tensor=True,
+                    device=self.device
+                )
+            raise e
 
     def get_informational_response(self, query):
         """
