@@ -58,7 +58,8 @@ from emotional_response import EmotionalResponse
 class MentalHealthChatbot:
     """A chatbot for mental health support."""
 
-    def __init__(self, faq_data_path, conversations_data_path, sentence_encoder="paraphrase-MiniLM-L6-v2", test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
+    def __init__(self, faq_data_path, conversations_data_path, sentence_encoder="paraphrase-MiniLM-L6-v2",
+                 test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
         """
         Initializes the MentalHealthChatbot with data paths and configuration parameters.
 
@@ -82,14 +83,20 @@ class MentalHealthChatbot:
         self.conversations_data_path = conversations_data_path
         self.test_size = test_size
         self.random_state = random_state
-        self.device = device  # Store the device
+        self.device = device
         self.gpu_ids = gpu_ids
 
-        # Initialize models and data placeholders
-        self.encoder = SentenceTransformer(sentence_encoder)
-        self.logistic_classifier = None
-        self.knn_classifier = None
-        self.emotional_response = None
+        # Initialize the encoder
+        self.base_encoder = SentenceTransformer(sentence_encoder)
+        self.base_encoder.to(self.device)
+
+        # If using multiple GPUs, wrap the model
+        if self.gpu_ids and len(self.gpu_ids) > 1:
+            # We'll only wrap the transformer model component
+            self.base_encoder.transformer = DataParallel(
+                self.base_encoder.transformer,
+                device_ids=self.gpu_ids
+            )
 
     def load_data(self):
         """
@@ -116,27 +123,20 @@ class MentalHealthChatbot:
         all_queries = faq_queries + conv_contexts
         all_labels = faq_labels + conv_labels
 
-        # Load the encoder model onto the specified device default is sentence_encoder = paraphrase-MiniLM-L6-v2
-        self.encoder.to(self.device)
-
-        # Use DataParallel if multiple GPUs are available
-        if self.gpu_ids and len(self.gpu_ids) > 1:
-            self.encoder = DataParallel(
-                self.encoder, device_ids=self.gpu_ids)
-
-        # Encode the queries
-        self.encoded_queries = self.encoder.encode(
-            all_queries, convert_to_tensor=True, device=self.device)
+        # Use the wrapper method for encoding
+        self.encoded_queries = self.encode_text(all_queries)
 
         # Split the data
         self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
-            self.encoded_queries.cpu().numpy(), all_labels,
-            test_size=self.test_size, random_state=self.random_state
+            self.encoded_queries.cpu().numpy(),
+            all_labels,
+            test_size=self.test_size,
+            random_state=self.random_state
         )
 
     def train_logistic_classifier(self):
         """
-        Trains a logistic regression classifier to categorize user 
+        Trains a logistic regression classifier to categorize user
             queries as either informational or emotional.
 
         Returns:
@@ -167,9 +167,8 @@ class MentalHealthChatbot:
         faq_queries = self.faq_df['Questions'].tolist()
         self.faq_answers = self.faq_df['Answers'].tolist()
 
-        # Encode FAQ queries
-        self.encoded_faq_queries = self.encoder.encode(
-            faq_queries, convert_to_tensor=True, device=self.device)
+        # Use the wrapper method for encoding
+        self.encoded_faq_queries = self.encode_text(faq_queries)
 
         # Build KNN model
         self.knn_classifier = NearestNeighbors(n_neighbors=1, metric='cosine')
@@ -177,7 +176,19 @@ class MentalHealthChatbot:
 
         # Initialize EmotionalResponse with the same device and GPU IDs
         self.emotional_response = EmotionalResponse(
-            device=self.device, gpu_ids=self.gpu_ids)
+            device=self.device,
+            gpu_ids=self.gpu_ids
+        )
+
+    def encode_text(self, texts):
+        """
+        Wrapper method to handle encoding with both single and multi-GPU setups.
+        """
+        return self.base_encoder.encode(
+            texts,
+            convert_to_tensor=True,
+            device=self.device
+        )
 
     def get_informational_response(self, query):
         """
@@ -205,17 +216,18 @@ class MentalHealthChatbot:
         Returns:
             str: The chatbot's response.
         """
-        # Encode the query
-        query_embedding = self.encoder.encode(
-            [query], convert_to_tensor=True, device=self.device).cpu().numpy()
+        """
+        Responds to the user's query based on its classification.
+        """
+        # Encode the query using the wrapper method
+        query_embedding = self.encode_text([query]).cpu().numpy()
 
         # Classify the query
         prediction = self.logistic_classifier.predict(query_embedding)
 
         if prediction[0] == 0:
             # Informational query
-            _, indices = self.knn_classifier.kneighbors(
-                query_embedding)
+            _, indices = self.knn_classifier.kneighbors(query_embedding)
             answer = self.faq_answers[indices[0][0]]
             return answer
         else:
