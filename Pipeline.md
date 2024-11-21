@@ -78,16 +78,16 @@ Summary = {S0}
    Choose a parameter lambda = 0.7 # Weighting parameter
    k = 3 # Top k sentences
 
-* 4.1 Loop until top k sentences have been selected.
-* 4.2 Calculate the relevance of a sentence not currently in the summary set using, `Maximal Marginal Relevance` (**MMR**) with the formula:
+   * 4.1 Loop until top k sentences have been selected.
+   * 4.2 Calculate the relevance of a sentence not currently in the summary set using, `Maximal Marginal Relevance` (**MMR**) with the formula:
 
-      ```math
-      MMR = lambda *Cosine Similarity(Q, S) - (1- lambda)* Highest Cosine Similarity to already existing 
-      ```
+   ```math
+   MMR = lambda *Cosine Similarity(Q, S) - (1- lambda)* Highest Cosine Similarity to already existing 
+   ```
 
-* 4.2.1 sentences in the summary.
-     Choose the sentence with maximum MMR score and add to the summary.
-* 4.3 Go back to 4.1
+   * 4.2.1 sentences in the summary.
+      Choose the sentence with maximum MMR score and add to the summary.
+   * 4.3 Go back to 4.1
 
 5. Information Ordering: Order the sentences in the summary by their original ordering. For example, we get the following summary set:
    Summary = {S0, S3, S5}
