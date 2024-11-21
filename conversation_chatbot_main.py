@@ -171,7 +171,7 @@ def main(argv):
                 # Provide on-demand summary
                 if session_log:
                     full_text = ' '.join(session_log)
-                    summary = summarization_engine.summarize_text(full_text)
+                    summary = summarization_engine.summarize_text_MMR(question, response)
                     print("\nSummary:")
                     print(summary)
                 else:
@@ -181,6 +181,7 @@ def main(argv):
                 continue
 
             # Get response from the chatbot
+            question = user_input
             response = chatbot.respond_to_query(user_input)
             print(f"Chatbot: {response}")
             # Append the interaction to the session log

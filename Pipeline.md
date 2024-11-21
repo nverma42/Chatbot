@@ -41,8 +41,6 @@ Pipeline of Mental Health Chatbot.
    
 7. We will use similarity based node matching to produce a response.
 
-```py
-We do not neeed data/canned_response.csv.
 The canned response file is the mental health FAQ file.
 
 A conversation graph will be created based on previous counseling sessions.
@@ -53,17 +51,55 @@ So we need to add df_B dataframe to get this data.
 
 Using conversation graph is better than producing canned responses.
 
-How will this process work?
+# How Anchor works?
+Anchor uses a model based on topic understanding and information rerieval.
 
-This data has conversations with a counselor.
-We will classify each of these conversations with a situation e.g. relationship issues because we have LDA classifier now.
-Thus each situation will have a separate graph. Let us say when someone is
-sad because of relationship issues, how conversation with a counseler proceeds is very predictable.
-We will first classify user's situation.
-The ChatBot will then map user's query to a graph.
-Then the conversation will proceed accordingly.
-Each response will sent to a summarization engine which will produce a compact response.
-For the purpose of demo, we will show both response.
-We do not have a lot of conversation data, so chatbot won't
-be able to chat for long but for our project this should be fine.
-```
+1. The user submits a query.
+2. Anchor first classifies a user query into informational and emotional.
+3. If query is informational, Anchor extracts the response and provides it to the user. There is no need for conversation to continue in this case.
+4. If the query is emotional, it identifies the specific situation a user may be in e.g. relationship issues, addiction issues etc.
+5. It then maps user's query to a conversation graph.
+6. Then the conversation flows according to the closest matching conversation graph in Anchor's database.
+7. Each response will sent to a summarization engine which will produce a compact response.
+
+## Summarization Engine
+1. Divide the long response in sentences delimited by "." character.
+2. Encode user query and each sentence with SentenceTransformer encoder. This step is called vectorization of sentences.
+3. Compute the cosine similarity for each sentence and query using numpy dot and norm functions. An example is given here:
+   similarity score = np.dot(query_embedding, sentence_embedding.T) / (
+    norm(query_embedding) * norm(sentence_embedding)
+
+4. Choose the relevance sentences
+Initialization: Choose the sentence with the highest similarity to query. This is most relevant sentence in the summary.
+Summary = {S0}
+
+Choose a parameter lambda = 0.7 # Weighting parameter
+k = 3 # Top k sentences
+
+4.1 Loop until top k sentences have been selected.
+4.2. Calculate the relevance of a sentence not currently in the summary set using the formula:
+     MMR = lambda * Cosine Similarity(Q, S) - (1- lambda) * Highest Cosine Similarity to already existing sentences in the summary.
+     Choose the sentence with maximum MMR score and add to the summary.
+4.3 Go back to 4.1
+
+5. Information Ordering: Order the sentences in the summary by their original ordering. For example, we get the following summary set:
+   Summary = {S0, S3, S5}
+
+But the original ordering in the text was S3, S0 and then S5, then our summary would in the original order. <=== Our novelty
+
+## Model Performance
+We evaluated two performance metrics, Model coherence and Model Perplexity. Model coherence indicates the coherence of topic words in the LDA model. 
+The best coherence metric of 0.45 was obtained when number of topics were set to 7. 
+The coherence metric of 0.45 indicates that topics are well formed, although there is a room for improvement.
+
+The perplexity metric indicates how good the natural language model is in its predictions/ In the context of Latent Dirichlet Allocation (LDA), perplexity is a measure of how well the model fits the given set of documents, similar to how it's used in language models. Specifically, for LDA, perplexity quantifies how "surprised" the model is by the words in a held-out test set of documents, based on the topics it learned during training. 
+We obtained moderately good values for log perplexity in the range of [-8, -9]
+
+
+For LDA, a lower (more negative) log perplexity generally suggests better model fit to the data. If the LDA model achieves a very negative log-perplexity score and good topic coherence, it may be better at representing specific topics or contextually relevant topics for the data.
+
+Comparing the model with hugging face model : [mental-health-mistral-7b-instructv0.2-finetuned-V2] (https://huggingface.co/GRMenon/mental-health-mistral-7b-instructv0.2-finetuned-V2)
+
+
+
+
