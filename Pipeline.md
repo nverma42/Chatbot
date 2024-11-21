@@ -1,4 +1,4 @@
-# Datasets used for Mental Health Chatbot.
+# Datasets used for Mental Health Chatbot
 
 A. data/Mental_Health_FAQ.csv for informational response
 B. Build a conversation graph by selecting some conversations. There is a lot in this dataset and we may need to curate this data.
@@ -38,8 +38,8 @@ Pipeline of Mental Health Chatbot.
 5. Build emotion graph based on dataset B. The graph is a network X graph which chat bot navigates.
    For example, let us say chatbot detects user wants to discuss their addiction issues.
    Then chatbot figures out the apppropriate topic and pick the best conversation for that topic.
-   
-7. We will use similarity based node matching to produce a response.
+
+6. We will use similarity based node matching to produce a response.
 
 The canned response file is the mental health FAQ file.
 
@@ -51,7 +51,8 @@ So we need to add df_B dataframe to get this data.
 
 Using conversation graph is better than producing canned responses.
 
-# How Anchor works?
+## How Anchor works?
+
 Anchor uses a model based on topic understanding and information rerieval.
 
 1. The user submits a query.
@@ -63,6 +64,7 @@ Anchor uses a model based on topic understanding and information rerieval.
 7. Each response will sent to a summarization engine which will produce a compact response.
 
 ## Summarization Engine
+
 1. Divide the long response in sentences delimited by "." character.
 2. Encode user query and each sentence with SentenceTransformer encoder. This step is called vectorization of sentences.
 3. Compute the cosine similarity for each sentence and query using numpy dot and norm functions. An example is given here:
@@ -73,14 +75,14 @@ Anchor uses a model based on topic understanding and information rerieval.
 Initialization: Choose the sentence with the highest similarity to query. This is most relevant sentence in the summary.
 Summary = {S0}
 
-Choose a parameter lambda = 0.7 # Weighting parameter
-k = 3 # Top k sentences
+   Choose a parameter lambda = 0.7 # Weighting parameter
+   k = 3 # Top k sentences
 
-4.1 Loop until top k sentences have been selected.
-4.2. Calculate the relevance of a sentence not currently in the summary set using the formula:
-     MMR = lambda * Cosine Similarity(Q, S) - (1- lambda) * Highest Cosine Similarity to already existing sentences in the summary.
-     Choose the sentence with maximum MMR score and add to the summary.
-4.3 Go back to 4.1
+   4.1 Loop until top k sentences have been selected.
+   4.2. Calculate the relevance of a sentence not currently in the summary set using the formula:
+      MMR = lambda *Cosine Similarity(Q, S) - (1- lambda)* Highest Cosine Similarity to already existing sentences in the summary.
+      Choose the sentence with maximum MMR score and add to the summary.
+   4.3 Go back to 4.1
 
 5. Information Ordering: Order the sentences in the summary by their original ordering. For example, we get the following summary set:
    Summary = {S0, S3, S5}
@@ -88,18 +90,14 @@ k = 3 # Top k sentences
 But the original ordering in the text was S3, S0 and then S5, then our summary would in the original order. <=== Our novelty
 
 ## Model Performance
-We evaluated two performance metrics, Model coherence and Model Perplexity. Model coherence indicates the coherence of topic words in the LDA model. 
-The best coherence metric of 0.45 was obtained when number of topics were set to 7. 
+
+We evaluated two performance metrics, Model coherence and Model Perplexity. Model coherence indicates the coherence of topic words in the LDA model.
+The best coherence metric of 0.45 was obtained when number of topics were set to 7.
 The coherence metric of 0.45 indicates that topics are well formed, although there is a room for improvement.
 
-The perplexity metric indicates how good the natural language model is in its predictions/ In the context of Latent Dirichlet Allocation (LDA), perplexity is a measure of how well the model fits the given set of documents, similar to how it's used in language models. Specifically, for LDA, perplexity quantifies how "surprised" the model is by the words in a held-out test set of documents, based on the topics it learned during training. 
+The perplexity metric indicates how good the natural language model is in its predictions/ In the context of Latent Dirichlet Allocation (LDA), perplexity is a measure of how well the model fits the given set of documents, similar to how it's used in language models. Specifically, for LDA, perplexity quantifies how "surprised" the model is by the words in a held-out test set of documents, based on the topics it learned during training.
 We obtained moderately good values for log perplexity in the range of [-8, -9]
-
 
 For LDA, a lower (more negative) log perplexity generally suggests better model fit to the data. If the LDA model achieves a very negative log-perplexity score and good topic coherence, it may be better at representing specific topics or contextually relevant topics for the data.
 
-Comparing the model with hugging face model : [mental-health-mistral-7b-instructv0.2-finetuned-V2] (https://huggingface.co/GRMenon/mental-health-mistral-7b-instructv0.2-finetuned-V2)
-
-
-
-
+Comparing the model with hugging face model : [mental-health-mistral-7b-instructv0.2-finetuned-V2] (<https://huggingface.co/GRMenon/mental-health-mistral-7b-instructv0.2-finetuned-V2>)
