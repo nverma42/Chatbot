@@ -1,6 +1,6 @@
 # Datasets used for Mental Health Chatbot
 
-A. data/Mental_Health_FAQ.csv for informational response
+A. https://www.kaggle.com/datasets/narendrageek/mental-health-faq-for-chatbot for informational response
 B. Build a conversation graph by selecting some conversations. There is a lot in this dataset and we may need to curate this data.
 
 <https://huggingface.co/datasets/Amod/mental_health_counseling_conversations> for mapping conversations appropriate to an emotion.
@@ -105,4 +105,4 @@ We obtained moderately good values for log perplexity in the range of [-8, -9]
 
 For LDA, a lower (more negative) log perplexity generally suggests better model fit to the data. If the LDA model achieves a very negative log-perplexity score and good topic coherence, it may be better at representing specific topics or contextually relevant topics for the data.
 
-Comparing the model with hugging face model : [mental-health-mistral-7b-instructv0.2-finetuned-V2] (<https://huggingface.co/GRMenon/mental-health-mistral-7b-instructv0.2-finetuned-V2>)
+Compare the model with BERTopic. We found that BERTopic found 148 topics with similar coherence metric.
