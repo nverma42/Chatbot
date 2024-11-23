@@ -46,12 +46,10 @@ Future Enhancements:
 """
 import pandas as pd
 import torch
-from torch.nn import DataParallel
 from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, precision_recall_fscore_support
 from emotional_response import EmotionalResponse
 
 
@@ -80,15 +78,6 @@ class MentalHealthChatbot:
             emotional_response_handler (EmotionalResponse): Instance of EmotionalResponse class to handle emotional queries.
         """
 
-
-class MentalHealthChatbot:
-    """A chatbot for mental health support."""
-
-    def __init__(self, faq_data_path, conversations_data_path, sentence_encoder="paraphrase-MiniLM-L6-v2",
-                 test_size=0.3, random_state=42, device='cpu', gpu_ids=None):
-        """
-        Initializes the MentalHealthChatbot with data paths and configuration parameters.
-        """
         self.faq_data_path = faq_data_path
         self.conversations_data_path = conversations_data_path
         self.test_size = test_size
