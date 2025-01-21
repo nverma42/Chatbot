@@ -289,7 +289,7 @@ def main(argv):
                         full_text = ' '.join(session_log)
                         summary_result = summarization_engine.summarize(
                             full_text,
-                            query="What were the main points discussed in this conversation?"
+                            query="\nWhat were the main points discussed in this conversation?\n"
                         )
                         print(summary_result['summary'])
                     break
@@ -301,7 +301,7 @@ def main(argv):
                         full_text = ' '.join(session_log)
                         summary_result = summarization_engine.summarize(
                             full_text,
-                            query="What were the key points in our recent discussion?"
+                            query="\nWhat were the key points in our recent discussion?\n"
                         )
                         print(summary_result['summary'])
 
@@ -321,7 +321,7 @@ def main(argv):
                 # Handle empty input
                 if not user_input:
                     print(
-                        "Chatbot: I didn't catch that. Could you please say something?")
+                        "\nChatbot: I didn't catch that. Could you please say something?\n")
                     continue
 
                 # Get response from chatbot
@@ -336,7 +336,7 @@ def main(argv):
                 except Exception as e:
                     logger.error(f"Error generating response: {str(e)}")
                     print(
-                        "Chatbot: I apologize, but I'm having trouble generating a response. Could you try rephrasing your question?")
+                        "Chatbot: I apologize, but I'm having trouble generating a response. Could you try rephrasing your question?\n")
 
             except KeyboardInterrupt:
                 # Handle Ctrl+C gracefully
@@ -348,7 +348,7 @@ def main(argv):
                     full_text = ' '.join(session_log)
                     summary_result = summarization_engine.summarize(
                         full_text,
-                        query="What were the main points discussed in this conversation?"
+                        query="\nWhat were the main points discussed in this conversation?\n"
                     )
                     print(summary_result['summary'])
                 break
