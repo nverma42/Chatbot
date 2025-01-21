@@ -5,7 +5,7 @@ and semantic similarity for response selection.
 """
 import random
 import logging
-from typing import List, Dict, Tuple
+from typing import List, Dict
 import networkx as nx
 import nltk
 import numpy as np
@@ -128,35 +128,34 @@ class EmotionalResponse:
         # Transform the bag of words model to tf-idf model
         self.corpus_tfidf = self.tfidf_model[self.corpus_bow]
 
-        '''
-        Model Tuning
-        best_model = None
-        best_coherence_score = -1
-        score_dict = {}
-        for n_topics in range(2, 10):
-            lda_model = LdaModel(
-                self.corpus_tfidf,
-                num_topics=n_topics,
-                id2word=self.dictionary,
-                alpha=0.01,
-                eta=0.01,
-                passes=20,
-                random_state=42
-                )
-            
-            perplexity_score = lda_model.log_perplexity(self.corpus_tfidf)
-            
-            coherence_model_lda = CoherenceModel(model= lda_model, texts=processed_data, dictionary=self.dictionary, coherence='c_v')
-            coherence_score = coherence_model_lda.get_coherence()
-            if (coherence_score > best_coherence_score):
-                best_coherene_score = coherence_score
-                best_model = lda_model
-            
-            score_dict[n_topics] = [perplexity_score, coherence_score]
+        # Model Tuning
+        # best_model = None
+        # best_coherence_score = -1
+        # score_dict = {}
+        # for n_topics in range(2, 10):
+        #     lda_model = LdaModel(
+        #         self.corpus_tfidf,
+        #         num_topics=n_topics,
+        #         id2word=self.dictionary,
+        #         alpha=0.01,
+        #         eta=0.01,
+        #         passes=20,
+        #         random_state=42
+        #         )
 
-        self.lda_model = best_model
-        print(score_dict)
-        '''
+        #     perplexity_score = lda_model.log_perplexity(self.corpus_tfidf)
+
+        #     coherence_model_lda = CoherenceModel(model= lda_model,
+        #       texts=processed_data, dictionary=self.dictionary, coherence='c_v')
+        #     coherence_score = coherence_model_lda.get_coherence()
+        #     if (coherence_score > best_coherence_score):
+        #         best_coherene_score = coherence_score
+        #         best_model = lda_model
+
+        #     score_dict[n_topics] = [perplexity_score, coherence_score]
+
+        # self.lda_model = best_model
+        # print(score_dict)
 
         n_topics = 7
         self.lda_model = LdaModel(

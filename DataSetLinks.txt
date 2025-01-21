@@ -1,0 +1,6 @@
+[21] N. Prasath and N. Prabhavalkar, “Mental health faq for chatbot,” 2024,
+accessed: September 2024. [Online]. Available: https://www.kaggle.
+com/datasets/narendrageek/mental-health-faq-for-chatbot
+[22] Amod, “Mental health counseling conversations,” 2024. [Online]. Avail-
+able: https://huggingface.co/datasets/Amod/mental health counseling
+conversations
