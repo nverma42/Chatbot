@@ -50,7 +50,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.neighbors import NearestNeighbors
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-from emotional_response import EmotionalResponse
+from mhchatbot.emotional_response import EmotionalResponse
 
 
 class MentalHealthChatbot:

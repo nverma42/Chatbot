@@ -1,9 +1,13 @@
+import torch
+import numpy as np
+import pandas as pd
+from mhchatbot.emotional_response import EmotionalResponse
 import unittest
 from unittest.mock import patch, MagicMock
-from emotional_response import EmotionalResponse
-import pandas as pd
-import numpy as np
-import torch
+import sys
+import os
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 
 class TestEmotionalResponse(unittest.TestCase):

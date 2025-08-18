@@ -1,6 +1,10 @@
 
+from mhchatbot.summarization import SummarizationEngine
 import unittest
-from summarization_engine import SummarizationEngine
+import sys
+import os
+sys.path.insert(0, os.path.abspath(
+    os.path.join(os.path.dirname(__file__), '..', 'src')))
 
 
 class TestSummarizationEngine(unittest.TestCase):

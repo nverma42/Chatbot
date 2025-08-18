@@ -1,6 +1,6 @@
 # Mental Health Chatbot
 
-This project focuses on building a mental health chatbot that can provide empathetic responses and offer basic mental health information. The chatbot uses a logistic regression classifier to categorize user queries into two groups: information-seeking (class A) and emotional support-seeking (class B). The chatbot then generates appropriate canned responses based on these classifications.
+A sophisticated mental health support system that provides both informational responses and emotional support through machine learning-based query classification and conversation graph navigation. The chatbot uses advanced NLP techniques including Sentence Transformers, LDA topic modeling, and MMR-based summarization to deliver contextually appropriate and empathetic responses.
 
 ## Table of Contents
 
@@ -14,14 +14,27 @@ This project focuses on building a mental health chatbot that can provide empath
 - [Usage](#usage)
 - [Credits](#credits)
 
+## Features
+
+- **Dual Response Modes**: Informational (FAQ-based) and Emotional (conversation graph-based)
+- **Advanced NLP**: Sentence Transformers for semantic understanding
+- **Topic Modeling**: LDA for emotion/situation categorization
+- **Smart Summarization**: MMR algorithm for concise, relevant responses
+- **GPU Acceleration**: Automatic device management with multi-GPU support
+- **Session Management**: Conversation history and summarization
+
 ## Requirements
 
 - Python 3.8 or higher
-- Libraries:
-  - absl-py
-  - pandas
-  - sentence-transformers
-  - scikit-learn
+- CUDA-capable GPU (optional, falls back to CPU)
+- Core Dependencies:
+  - `sentence-transformers`: Semantic embeddings
+  - `scikit-learn`: Classification algorithms
+  - `pandas`: Data processing
+  - `torch`: Deep learning backend
+  - `networkx`: Conversation graph management
+  - `gensim`: LDA topic modeling
+  - `absl-py`: Command-line flags
 
 ## Installation
 
@@ -93,20 +106,36 @@ python3 -m venv chatbot_env
 pip install -r requirements.txt
 ```
 
-### Running the Chatbot
+### Installation
 
-Once you have installed the necessary dependencies and activated your environment, you can run the chatbot using the following command:
+### Option 1: Install as Package
 
 ```bash
-python conversation_chatbot_main.py --faq_data_path ./data/Mental_Health_FAQ.csv --empathetic_data_path ./data/empathetic-dialogues-contexts --conversations_data_path ./data/mental_health_counseling_conversations.csv
+pip install -e .
 ```
 
-*alt view*:
+This will install the chatbot as a package, making it available from anywhere.
 
-```powershell
-python conversation_chatbot_main.py --faq_data_path ./data/Mental_Health_FAQ.csv \
-               --empathetic_data_path ./data/empathetic-dialogues-contexts/ \
-               --conversations_data_path ./data/mental_health_counseling_conversations.csv
+### Option 2: Direct Installation
+
+Follow the conda or venv setup instructions above, then:
+
+```bash
+pip install -r requirements.txt
+```
+
+## Running the Chatbot
+
+### If installed as package
+
+```bash
+mhchatbot --faq_data_path ./data/Mental_Health_FAQ.csv --conversations_data_path ./data/mental_health_counseling_conversations.csv
+```
+
+### Direct execution
+
+```bash
+python src/mhchatbot/main.py --faq_data_path ./data/Mental_Health_FAQ.csv --conversations_data_path ./data/mental_health_counseling_conversations.csv
 ```
 
 ### Optional Arguments
@@ -129,23 +158,30 @@ To exit the chatbot, you can type any of the following:
 
 ## Project Structure
 
-The project follows a structured organization defined using GraphQL schema. Below is both the visual directory structure and its corresponding schema representation:
-
-```ps
-mental_health_chatbot/
+```
+mhchatbot/
 │
-├── main.py                  # Entry point of the application
-├── chatbot.py               # Contains the MentalHealthChatbot class
-├── utils.py                 # Utility functions
+├── src/
+│   └── mhchatbot/
+│       ├── __init__.py
+│       ├── main.py              # Entry point
+│       ├── chatbot.py           # Core chatbot logic
+│       ├── emotional_response.py # Emotional query handling
+│       └── summarization.py     # Response summarization
+├── tests/
+│   ├── __init__.py
+│   ├── test_emotional_response.py
+│   └── test_summarization.py
+├── scripts/
+│   └── model_comparison.py      # Model evaluation scripts
+├── docs/
+│   └── visuals/                 # Visualizations
 ├── data/
-│   ├── Mental_Health_FAQ.csv
-│   ├── canned_responses.csv    
-│   └── empathetic-dialogues-contexts/
-│       ├── train.csv
-│       ├── valid.csv
-│       └── test.csv
-├── requirements.txt         # List of dependencies
-└── README.md               # Project documentation
+│   └── Mental_Health_FAQ.csv
+├── config/                      # Configuration files
+├── setup.py                     # Package installation
+├── requirements.txt             # Dependencies
+└── README.md                    # Documentation
 ```
 
 ### Schema Definition
@@ -178,32 +214,102 @@ type Project {
   - `requirements.txt`: Project dependencies
   - `README.md`: Documentation and setup instructions
 
-### Key Files and Directories
+### Core Modules
 
-- `data/`: Contains the required datasets for running the chatbot, including FAQ data, counseling conversation data, and empathetic dialogues.
-- `mental_health_chatbot.py`: Implements the `MentalHealthChatbot` class, handling data loading, preprocessing, model training, and generating responses.
-- `conversation_chatbot_main.py`: Contains the runtime logic and manages the interactive loop for user queries.
-- `README.md`: Provides an overview of the project, installation steps, running instructions, and usage examples.
-- `requirements.txt`: Lists the dependencies needed to run the project (e.g., `sentence-transformers`, `scikit-learn`).
+#### src/mhchatbot/
+- **main.py**: Application entry point
+  - GPU/CPU device detection and management
+  - Interactive session handling
+  - Command-line argument processing
+  
+- **chatbot.py**: Core chatbot engine
+  - Logistic Regression for query classification (A/B)
+  - KNN classifier for FAQ matching
+  - Integration with emotional response system
+  
+- **emotional_response.py**: Emotional support module
+  - LDA topic modeling (7 topics)
+  - Conversation graph navigation
+  - NetworkX-based response generation
+  
+- **summarization.py**: Response optimization
+  - MMR (Maximal Marginal Relevance) implementation
+  - Sentence ordering preservation
+  - Configurable summary length
 
-Ensure the datasets are correctly placed in the `data/` directory as per the structure, and you're ready to run the chatbot using the provided instructions.
+#### Supporting Components
+- **tests/**: Comprehensive unit test suite
+- **scripts/**: Model evaluation and comparison tools
+- **data/**: Dataset storage (CSV, JSON formats)
+- **docs/visuals/**: Topic model visualizations
+- **config/**: Environment-specific configurations
 
-### Usage
+## Usage Guide
 
-Once the chatbot is running, type any mental health-related query. The chatbot will categorize your query as either informational or emotional. It will then respond with an appropriate answer based on its classification, using the FAQ dataset for informational queries and a conversation graph derived from counseling sessions for emotional queries.
+### Interactive Commands
 
-**Example interaction**:
+- **Chat**: Type any mental health-related query
+- **Summarize**: Type `summarize` to get conversation summary
+- **Exit**: Type `exit`, `quit`, `q`, `x`, `e`, or press `Ctrl+C`
 
-```bash
-You: I'm feeling really stressed out lately.
-Chatbot: I'm sorry to hear that you're feeling stressed. Would you like to talk about it?
+### Query Types and Responses
 
+#### Informational Queries (Type A)
+Factual questions about mental health, symptoms, treatments:
+```
 You: What are the symptoms of anxiety?
-Chatbot: Some common symptoms of anxiety include nervousness, restlessness, and a sense of impending danger.
+Chatbot: Common symptoms include nervousness, restlessness, rapid heartbeat, 
+         difficulty concentrating, and a sense of impending danger.
 ```
 
-### Credits
+#### Emotional Support Queries (Type B)
+Personal struggles, seeking empathy and guidance:
+```
+You: I'm feeling really stressed and overwhelmed.
+Chatbot: I understand you're going through a difficult time. It's completely 
+         normal to feel overwhelmed. Would you like to talk about what's 
+         causing your stress?
+```
 
-- **Sentence-BERT**: Used for encoding questions and contexts.
-- **Scikit-learn**: Used for implementing classifiers.
-- **Pandas**: For handling data loading and preprocessing.
+### Advanced Features
+
+1. **Multi-turn Conversations**: The chatbot maintains context across exchanges
+2. **Session Summaries**: Automatic summarization on exit
+3. **GPU Acceleration**: Utilizes available CUDA devices for faster processing
+4. **Adaptive Responses**: LDA-based topic matching for relevant support
+
+## Technical Details
+
+### Machine Learning Pipeline
+
+1. **Query Encoding**: Sentence-BERT (paraphrase-MiniLM-L6-v2)
+2. **Classification**: Logistic Regression (binary: A/B)
+3. **Information Retrieval**: KNN (k=5) for FAQ matching
+4. **Topic Modeling**: LDA with 7 topics for emotional categorization
+5. **Graph Navigation**: NetworkX for conversation flow
+6. **Summarization**: MMR algorithm (λ=0.7, k=3 sentences)
+
+### Performance Metrics
+
+- LDA Coherence Score: 0.45
+- Log Perplexity: [-8, -9] range
+- GPU Memory Requirement: 4GB minimum
+- Response Time: <2 seconds (GPU), <5 seconds (CPU)
+
+## Contributing
+
+Contributions are welcome! Please ensure:
+- Code follows existing patterns and conventions
+- Tests are added for new functionality
+- Documentation is updated accordingly
+
+## License
+
+This project is intended for educational and research purposes in mental health support systems.
+
+## Acknowledgments
+
+- **Sentence-BERT**: Semantic similarity computation
+- **Scikit-learn**: Machine learning algorithms
+- **Hugging Face**: Mental health conversation datasets
+- **Kaggle**: Mental health FAQ dataset

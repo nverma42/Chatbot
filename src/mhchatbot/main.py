@@ -42,8 +42,8 @@ import subprocess
 from typing import List, Tuple, Optional
 import torch
 from absl import app, flags
-from mental_health_chatbot import MentalHealthChatbot
-from summarization_engine import EnhancedSummarizationEngine
+from mhchatbot.chatbot import MentalHealthChatbot
+from mhchatbot.summarization import EnhancedSummarizationEngine
 # import nltk
 # nltk.download('stopwords')
 # nltk.download('punkt_tab')
