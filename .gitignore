@@ -124,3 +124,6 @@ dmypy.json
 *.pdb
 *.opendb
 Metrics and Comparisions/~$Model Comparison Summary.xlsx
+
+# Ignore local ./ folders
+.claude
